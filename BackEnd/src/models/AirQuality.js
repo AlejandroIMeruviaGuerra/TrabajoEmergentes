@@ -1,24 +1,36 @@
-// src/models/AirQuality.js
 import mongoose from "mongoose";
-export const AirQualitySchema = new mongoose.Schema({
-  sensorId: { type: String, required: true },
-  location: { type: String },
-  pm25: { type: Number },
-  pm10: { type: Number },
-  co2: { type: Number },
-  timestamp: { type: Date, default: Date.now },
-});
-export const AirQualityModel = mongoose.model("AirQuality", AirQualitySchema);
 
-// Estructura MySQL (para referencia)
-export const AirQualityTable = `
-CREATE TABLE IF NOT EXISTS air_quality (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  sensorId VARCHAR(50),
-  location VARCHAR(100),
-  pm25 FLOAT,
-  pm10 FLOAT,
-  co2 FLOAT,
-  timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-`;
+const AirQualitySchema = new mongoose.Schema({
+  id: String,
+  time: Date,
+  device: {
+    devEui: String,
+    name: String,
+    profile: String,
+    tenant: String,
+    application: String,
+  },
+  location: { lat: Number, lng: Number, address: String },
+  radio: {
+    sf: Number,
+    bw: Number,
+    dr: Number,
+    rssi: [Number],
+    snr: [Number],
+  },
+  measures: {
+    co2: Number,
+    temperature: Number,
+    humidity: Number,
+    pressure: Number,
+  },
+  labels: {
+    co2_status: String,
+    co2_message: String,
+    temperature_message: String,
+    humidity_message: String,
+    pressure_status: String,
+  },
+}, { timestamps: true });
+
+export const AirQualityModel = mongoose.model("AirQuality", AirQualitySchema);

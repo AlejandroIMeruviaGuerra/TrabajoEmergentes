@@ -1,20 +1,18 @@
 import mongoose from "mongoose";
-export const UndergroundSchema = new mongoose.Schema({
-  sensorId: { type: String, required: true },
-  location: { type: String },
-  humidity: { type: Number },
-  temperature: { type: Number },
-  timestamp: { type: Date, default: Date.now },
-});
-export const UndergroundModel = mongoose.model("Underground", UndergroundSchema);
 
-export const UndergroundTable = `
-CREATE TABLE IF NOT EXISTS underground (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  sensorId VARCHAR(50),
-  location VARCHAR(100),
-  humidity FLOAT,
-  temperature FLOAT,
-  timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-`;
+const UndergroundSchema = new mongoose.Schema({
+  id: String,
+  time: Date,
+  device: {
+    devEui: String,
+    name: String,
+    profile: String,
+  },
+  location: { lat: Number, lng: Number, address: String },
+  radio: { sf: Number, bw: Number, dr: Number, rssi: [Number], snr: [Number] },
+  measures: { distance: Number, unit: String },
+  status: String,
+  battery: Number,
+}, { timestamps: true });
+
+export const UndergroundModel = mongoose.model("Underground", UndergroundSchema);

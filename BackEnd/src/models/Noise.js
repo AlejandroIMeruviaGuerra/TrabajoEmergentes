@@ -1,18 +1,18 @@
 import mongoose from "mongoose";
-export const NoiseSchema = new mongoose.Schema({
-  sensorId: { type: String, required: true },
-  location: { type: String },
-  decibels: { type: Number },
-  timestamp: { type: Date, default: Date.now },
-});
-export const NoiseModel = mongoose.model("Noise", NoiseSchema);
 
-export const NoiseTable = `
-CREATE TABLE IF NOT EXISTS noise (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  sensorId VARCHAR(50),
-  location VARCHAR(100),
-  decibels FLOAT,
-  timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-`;
+const NoiseSchema = new mongoose.Schema({
+  id: String,
+  time: Date,
+  device: {
+    devEui: String,
+    name: String,
+    profile: String,
+  },
+  location: { lat: Number, lng: Number, address: String },
+  radio: { sf: Number, bw: Number, dr: Number, rssi: [Number], snr: [Number] },
+  measures: { laeq: Number, lai: Number, laimax: Number },
+  battery: Number,
+  status: String,
+}, { timestamps: true });
+
+export const NoiseModel = mongoose.model("Noise", NoiseSchema);

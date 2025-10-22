@@ -46,7 +46,6 @@ connectMySQL();
 connectMongo();
 
 startConsumer();   // escucha mensajes
-sendMockData();    // simula envío de datos cada 5 segundos
 
 
 // Puerto del servidor

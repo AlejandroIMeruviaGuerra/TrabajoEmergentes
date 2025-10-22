@@ -1,10 +1,13 @@
+// src/routes/sensors.routes.js
 import { Router } from "express";
-import { registerSensorData, getSensorData } from "../controllers/sensors.controller.js";
+import { registerSensorData, listByType } from "../controllers/sensors.controller.js";
 
 const router = Router();
 
-// /api/sensors/air, /noise, /underground
+// GET últimos N (por defecto 50) -> desde MySQL
+router.get("/:type", listByType);
+
+// POST ingesta directa (útil para pruebas o para otro productor no-Kafka)
 router.post("/:type", registerSensorData);
-router.get("/:type", getSensorData);
 
 export default router;
