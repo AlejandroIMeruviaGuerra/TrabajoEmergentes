@@ -5,6 +5,21 @@ export const api = axios.create({
   baseURL: `${API}/api`,
 });
 
+// Interceptor para incluir el token en todas las peticiones
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem("token");
+  if (token) {
+    config.headers["x-access-token"] = token;
+  }
+  return config;
+});
+
+// --- Autenticación ---
+export async function login(credentials) {
+  const { data } = await api.post("/auth/login", credentials);
+  return data;
+}
+
 // Carga inicial por tipo
 export async function fetchByType(type) {
   const { data } = await api.get(`/sensors/${type}`);
