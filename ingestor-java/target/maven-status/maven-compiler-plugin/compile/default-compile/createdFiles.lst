@@ -1,0 +1,12 @@
+bo\univalle\gamc\ingestor\core\Observer.class
+bo\univalle\gamc\ingestor\observers\KafkaPublisherObserver.class
+bo\univalle\gamc\ingestor\normalize\Normalizer.class
+bo\univalle\gamc\ingestor\core\SensorRecord$Type.class
+bo\univalle\gamc\ingestor\Main.class
+bo\univalle\gamc\ingestor\core\CsvIngestor.class
+bo\univalle\gamc\ingestor\core\SensorRecord.class
+bo\univalle\gamc\ingestor\normalize\UndergroundNormalizer.class
+bo\univalle\gamc\ingestor\normalize\AirNormalizer.class
+bo\univalle\gamc\ingestor\observers\KafkaPublisherObserver$1.class
+bo\univalle\gamc\ingestor\core\Subject.class
+bo\univalle\gamc\ingestor\normalize\NoiseNormalizer.class

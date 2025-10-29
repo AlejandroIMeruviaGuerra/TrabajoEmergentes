@@ -9,6 +9,7 @@ import java.util.Properties;
 public class KafkaPublisherObserver implements Observer {
   private final KafkaProducer<String,String> producer;
   private final ObjectMapper mapper = new ObjectMapper();
+  private long count = 0;
 
   public KafkaPublisherObserver(Properties props) {
     this.producer = new KafkaProducer<>(props);
@@ -25,10 +26,16 @@ public class KafkaPublisherObserver implements Observer {
                  : (record.device!=null && record.device.get("devEui")!=null ? record.device.get("devEui").toString() : "unk");
       String value = mapper.writeValueAsString(record);
       producer.send(new ProducerRecord<>(topic, key, value));
+      
+      // Flush every 5000 messages to avoid buffer overflow
+      if (++count % 5000 == 0) {
+        producer.flush();
+      }
     } catch (Exception e) {
       e.printStackTrace();
     }
   }
 
+  public void flush(){ producer.flush(); }
   public void close(){ producer.flush(); producer.close(); }
 }

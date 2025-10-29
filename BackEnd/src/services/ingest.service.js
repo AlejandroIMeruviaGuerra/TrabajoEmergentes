@@ -82,6 +82,27 @@ function toMysqlUnderground(row) {
 }
 
 async function insertAirMySQL(obj) {
+  // ===== CAMBIO PRINCIPAL: Manejo inteligente de IDs =====
+  // ANTES (versión original):
+  //   - Se intentaba insertar obj.id directamente
+  //   - Causaba error: "Column 'id' cannot be null" cuando id era null
+  //
+  // ANTES (versión con AUTO_INCREMENT):
+  //   - Se intentó omitir el campo id para que MySQL lo generara
+  //   - No funcionó porque la tabla no tenía AUTO_INCREMENT configurado
+  //   - Error: "Field 'id' doesn't have a default value"
+  //
+  // DESPUÉS (versión actual - SOLUCIÓN FINAL):
+  //   - Si el CSV tiene id válido → Lo preservamos y usamos
+  //   - Si el CSV NO tiene id (null) → Generamos uno único (timestamp * 1000 + random)
+  //   - Si hay duplicados → Actualizamos con ON DUPLICATE KEY UPDATE
+  if (!obj.id || obj.id === null || obj.id === undefined) {
+    obj.id = Date.now() * 1000 + Math.floor(Math.random() * 1000);
+  }
+  
+  // CAMBIO: Agregado ON DUPLICATE KEY UPDATE
+  // ANTES: Sin manejo de duplicados, causaba error "Duplicate entry"
+  // DESPUÉS: Si el id ya existe, actualiza el registro en lugar de fallar
   const sql = `
     INSERT INTO air_quality
     (id, time, devEui, device_name, device_profile, tenant, application, address,
@@ -97,15 +118,23 @@ async function insertAirMySQL(obj) {
       temperature_message=VALUES(temperature_message), humidity_message=VALUES(humidity_message),
       pressure_status=VALUES(pressure_status)
   `;
+  
   const vals = [
     obj.id, obj.time, obj.devEui, obj.device_name, obj.device_profile, obj.tenant, obj.application, obj.address,
     obj.lat, obj.lng, obj.sf, obj.bw, obj.dr, obj.co2, obj.temperature, obj.humidity, obj.pressure,
     obj.co2_status, obj.co2_message, obj.temperature_message, obj.humidity_message, obj.pressure_status,
   ];
+  
   await pool.query(sql, vals);
 }
 
 async function insertNoiseMySQL(obj) {
+  // ===== MISMO CAMBIO aplicado a tabla noise =====
+  // Genera ID único si no existe, maneja duplicados con ON DUPLICATE KEY UPDATE
+  if (!obj.id || obj.id === null || obj.id === undefined) {
+    obj.id = Date.now() * 1000 + Math.floor(Math.random() * 1000);
+  }
+  
   const sql = `
     INSERT INTO noise
     (id, time, devEui, device_name, device_profile, address, lat, lng, sf, bw, dr,
@@ -118,14 +147,22 @@ async function insertNoiseMySQL(obj) {
       laeq=VALUES(laeq), lai=VALUES(lai), laimax=VALUES(laimax),
       battery=VALUES(battery), status=VALUES(status)
   `;
+  
   const vals = [
     obj.id, obj.time, obj.devEui, obj.device_name, obj.device_profile, obj.address, obj.lat, obj.lng,
     obj.sf, obj.bw, obj.dr, obj.laeq, obj.lai, obj.laimax, obj.battery, obj.status,
   ];
+  
   await pool.query(sql, vals);
 }
 
 async function insertUndergroundMySQL(obj) {
+  // ===== MISMO CAMBIO aplicado a tabla underground =====
+  // Genera ID único si no existe, maneja duplicados con ON DUPLICATE KEY UPDATE
+  if (!obj.id || obj.id === null || obj.id === undefined) {
+    obj.id = Date.now() * 1000 + Math.floor(Math.random() * 1000);
+  }
+  
   const sql = `
     INSERT INTO underground
     (id, time, devEui, device_name, device_profile, address, lat, lng, sf, bw, dr,
@@ -137,10 +174,12 @@ async function insertUndergroundMySQL(obj) {
       lng=VALUES(lng), sf=VALUES(sf), bw=VALUES(bw), dr=VALUES(dr),
       distance=VALUES(distance), unit=VALUES(unit), battery=VALUES(battery), status=VALUES(status)
   `;
+  
   const vals = [
     obj.id, obj.time, obj.devEui, obj.device_name, obj.device_profile, obj.address, obj.lat, obj.lng,
     obj.sf, obj.bw, obj.dr, obj.distance, obj.unit, obj.battery, obj.status,
   ];
+  
   await pool.query(sql, vals);
 }
 

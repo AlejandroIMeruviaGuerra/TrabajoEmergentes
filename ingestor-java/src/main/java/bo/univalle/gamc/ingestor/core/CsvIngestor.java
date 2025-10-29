@@ -21,6 +21,19 @@ public class CsvIngestor implements Subject {
   @Override public void notifyObservers(SensorRecord r){ observers.forEach(o -> o.update(r)); }
 
   public void run() throws Exception {
+    System.out.println("📂 Leyendo: " + csvPath.getFileName());
+    long count = 0;
+    
+    // ===== CAMBIO: Agregado tracking de tiempo y progreso =====
+    // ANTES: Sin feedback de progreso durante la lectura
+    // DESPUÉS: 
+    //   - Registra tiempo de inicio
+    //   - Muestra progreso cada 10,000 registros
+    //   - Muestra resumen al final (registros totales + tiempo)
+    // RAZÓN: Archivos CSV grandes (670K+ registros) tardan varios minutos,
+    //        necesario dar feedback visual del progreso
+    long start = System.currentTimeMillis();
+    
     try (CSVReader reader = new CSVReader(new FileReader(csvPath.toFile()))) {
       String[] header = reader.readNext();
       if (header == null) return;
@@ -28,9 +41,22 @@ public class CsvIngestor implements Subject {
       while ((row = reader.readNext()) != null) {
         Map<String,String> map = mapRow(header, row);
         SensorRecord rec = normalizer.normalize(map);
-        if (rec != null) notifyObservers(rec);
+        if (rec != null) {
+          notifyObservers(rec);
+          count++;
+          
+          // ===== CAMBIO: Logging de progreso cada 10K registros =====
+          if (count % 10000 == 0) {
+            System.out.printf("  📊 Procesados: %,d registros...%n", count);
+          }
+        }
       }
     }
+    
+    // ===== CAMBIO: Resumen final con tiempo transcurrido =====
+    long elapsed = System.currentTimeMillis() - start;
+    System.out.printf("✅ %s: %,d registros en %.2f segundos%n", 
+                      csvPath.getFileName(), count, elapsed / 1000.0);
   }
 
   private Map<String,String> mapRow(String[] h, String[] r){

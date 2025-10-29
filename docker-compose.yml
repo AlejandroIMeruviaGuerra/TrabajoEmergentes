@@ -17,7 +17,15 @@ services:
 
       # Para Windows (host ↔ contenedor):
       KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://host.docker.internal:9092
+      
+      # ===== CAMBIO CRÍTICO: KAFKA_ADVERTISED_LISTENERS =====
+      # ANTES: KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://host.docker.internal:9092
+      # DESPUÉS: KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+      # RAZÓN: En Windows, host.docker.internal no es accesible desde aplicaciones
+      #        que corren en el host (Java ingestor, Node.js backend)
+      #        localhost:9092 permite que tanto contenedores Docker como aplicaciones
+      #        host se conecten correctamente a Kafka
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
       KAFKA_BROKER_ID: 1
 
       # Single-broker: obliga factores de réplica a 1

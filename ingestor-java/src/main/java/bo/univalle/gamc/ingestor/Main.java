@@ -21,6 +21,20 @@ public class Main {
     props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringSerializer");
     props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringSerializer");
     props.put(ProducerConfig.ACKS_CONFIG, "1");
+    props.put(ProducerConfig.BATCH_SIZE_CONFIG, "32768"); // 32KB batches
+    props.put(ProducerConfig.LINGER_MS_CONFIG, "10"); // Wait 10ms to batch
+    props.put(ProducerConfig.BUFFER_MEMORY_CONFIG, "67108864"); // 64MB buffer
+    
+    // ===== CAMBIO CRÍTICO: COMPRESSION_TYPE_CONFIG =====
+    // ANTES: props.put(ProducerConfig.COMPRESSION_TYPE_CONFIG, "snappy");
+    // DESPUÉS: props.put(ProducerConfig.COMPRESSION_TYPE_CONFIG, "none");
+    // RAZÓN: KafkaJS (cliente Node.js) no soporta compresión Snappy sin dependencias nativas
+    //        Error que causaba: "KafkaJSNotImplemented: Snappy compression codec is not available"
+    //        Solución: Desactivar compresión para compatibilidad entre Java producer y Node.js consumer
+    props.put(ProducerConfig.COMPRESSION_TYPE_CONFIG, "none"); // Sin compresión para compatibilidad
+    
+    props.put(ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION, "5");
+    props.put(ProducerConfig.REQUEST_TIMEOUT_MS_CONFIG, "60000"); // 60s timeout
 
     KafkaPublisherObserver kafkaObs = new KafkaPublisherObserver(props);
 
@@ -32,9 +46,15 @@ public class Main {
     noiseIngestor.addObserver(kafkaObs);
     undIngestor.addObserver(kafkaObs);
 
-    airIngestor.run();
-    noiseIngestor.run();
-    undIngestor.run();
+    System.out.println("🚀 Iniciando ingesta de datos...");
+    try {
+      airIngestor.run();
+      noiseIngestor.run();
+      undIngestor.run();
+    } catch (Exception e) {
+      System.err.println("❌ Error durante la ingesta: " + e.getMessage());
+      e.printStackTrace();
+    }
 
     kafkaObs.close();
     System.out.println("✅ Ingesta finalizada");
