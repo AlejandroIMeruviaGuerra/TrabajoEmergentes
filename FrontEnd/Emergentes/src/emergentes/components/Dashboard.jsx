@@ -3,6 +3,7 @@ import { socket } from "../services/socket";
 import { fetchByType } from "../services/api";
 import SensorChart from "./SensorChart";
 
+import { useAuth } from "../context/useAuth.jsx";
 const TYPES = [
   { id: "air", label: "Calidad de Aire" },
   { id: "noise", label: "Ruido" },
@@ -32,6 +33,7 @@ export default function Dashboard() {
   const [active, setActive] = useState("air");
   const [state, dispatch] = useReducer(reducer, { air: [], noise: [], underground: [] });
   const [connected, setConnected] = useState(false);
+  const { logout } = useAuth();
 
   // Carga inicial (REST) por cada tipo
   useEffect(() => {
@@ -107,18 +109,34 @@ export default function Dashboard() {
 
   return (
     <div style={{ maxWidth: 1100, margin: "24px auto", padding: "0 16px" }}>
-      <header style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
-        <h1 style={{ fontSize: 22, margin: 0 }}>Dashboard — GAMC</h1>
-        <span
-          title={connected ? "Conectado en tiempo real" : "Desconectado"}
+      <header style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <h1 style={{ fontSize: 22, margin: 0 }}>Dashboard — GAMC</h1>
+          <span
+            title={connected ? "Conectado en tiempo real" : "Desconectado"}
+            style={{
+              width: 10,
+              height: 10,
+              borderRadius: "50%",
+              background: connected ? "#16a34a" : "#ef4444",
+              display: "inline-block",
+            }}
+          />
+        </div>
+        <button
+          onClick={logout}
           style={{
-            width: 10,
-            height: 10,
-            borderRadius: "50%",
-            background: connected ? "#16a34a" : "#ef4444",
-            display: "inline-block",
+            padding: "8px 12px",
+            borderRadius: 10,
+            border: "1px solid #d1d5db",
+            background: "#f9fafb",
+            color: "#374151",
+            cursor: "pointer",
+            fontSize: "14px",
           }}
-        />
+        >
+          Cerrar Sesión
+        </button>
       </header>
 
       {/* Tabs */}
