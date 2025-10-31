@@ -1,0 +1,79 @@
+import { useState } from "react";
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from "react-router-dom";
+import AuthProvider from "./context/AuthProvider.jsx";
+import { useAuth } from "./context/useAuth.jsx";
+import Login from "./components/Login";
+import Dashboard from "./components/Dashboard";
+import UploadCsv from "./components/UploadCsv";
+import AppShell from "./components/AppShell";
+
+function Private({ children }) {
+  const { isAuthenticated, loading } = useAuth();
+  const loc = useLocation();
+  if (loading) return <div>Cargando...</div>;
+  if (!isAuthenticated) return <Navigate to="/login" state={{ from: loc }} replace />;
+  // Aquí renderizamos el shell con el contenido dentro
+  return <AppShell>{children}</AppShell>;
+}
+
+function LoginPage() {
+  const { isAuthenticated, login, loading } = useAuth();
+  const [error, setError] = useState(null);
+  const [loginLoading, setLoginLoading] = useState(false);
+
+  const navigate = useNavigate();
+  const loc = useLocation();
+  const from = loc.state?.from?.pathname || "/";
+
+  if (isAuthenticated) return <Navigate to={from} replace />;
+
+  const handleLogin = async (credentials) => {
+    try {
+      setError(null);
+      setLoginLoading(true);
+      await login(credentials);
+      navigate(from, { replace: true });
+    } catch (err) {
+      setError(err?.response?.data?.message || "Error al iniciar sesión");
+    } finally {
+      setLoginLoading(false);
+    }
+  };
+
+  return <Login onLogin={handleLogin} error={error} loading={loginLoading || loading} />;
+}
+
+function AppContent() {
+  return (
+    <Routes>
+      <Route path="/login" element={<LoginPage />} />
+      <Route
+        path="/"
+        element={
+          <Private>
+            <Dashboard />
+          </Private>
+        }
+      />
+      <Route
+        path="/upload"
+        element={
+          <Private>
+            <UploadCsv />
+          </Private>
+        }
+      />
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
+  );
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <BrowserRouter>
+        <AppContent />
+      </BrowserRouter>
+    </AuthProvider>
+  );
+}

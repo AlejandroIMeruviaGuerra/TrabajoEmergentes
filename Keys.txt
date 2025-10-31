@@ -1,0 +1,4 @@
+MongoDB: 
+hosteada en render
+Postgree:
+Hosteada en RailWay
