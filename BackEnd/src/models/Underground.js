@@ -2,9 +2,9 @@ import mongoose from "mongoose";
 
 const UndergroundSchema = new mongoose.Schema({
   id: String,
-  time: Date,
+  time: { type: Date, index: true },
   device: {
-    devEui: String,
+    devEui: { type: String, index: true },
     name: String,
     profile: String,
   },
@@ -13,6 +13,9 @@ const UndergroundSchema = new mongoose.Schema({
   measures: { distance: Number, unit: String },
   status: String,
   battery: Number,
-}, { timestamps: true });
+}, { timestamps: true, collection: "undergrounds" });
+
+UndergroundSchema.index({ "device.devEui": 1, time: -1 });
+UndergroundSchema.index({ "location.address": 1, time: -1 });
 
 export const UndergroundModel = mongoose.model("Underground", UndergroundSchema);

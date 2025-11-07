@@ -8,14 +8,19 @@ import { UndergroundModel } from "../models/Underground.js";
 let ioRef = null;
 export function setIO(io) { ioRef = io; }
 
-// ----- Helpers -----
+// ===== Helpers =====
 function mongoReady() {
   return mongoose.connection?.readyState === 1 || mongoose.connection?.readyState === 2;
 }
 
+function ensureId(str) {
+  return str ?? String(Date.now() * 1000 + Math.floor(Math.random() * 1000));
+}
+
+// ---- Aplana para MySQL (igual a los tuyos) ----
 function toMysqlAir(row) {
   return {
-    id: row.id || null,
+    id: ensureId(row.id),
     time: row.time ? new Date(row.time) : null,
     devEui: row.device?.devEui || null,
     device_name: row.device?.name || null,
@@ -39,10 +44,9 @@ function toMysqlAir(row) {
     pressure_status: row.labels?.pressure_status || null,
   };
 }
-
 function toMysqlNoise(row) {
   return {
-    id: row.id || null,
+    id: ensureId(row.id),
     time: row.time ? new Date(row.time) : null,
     devEui: row.device?.devEui || null,
     device_name: row.device?.name || null,
@@ -60,10 +64,9 @@ function toMysqlNoise(row) {
     status: row.status || null,
   };
 }
-
 function toMysqlUnderground(row) {
   return {
-    id: row.id || null,
+    id: ensureId(row.id),
     time: row.time ? new Date(row.time) : null,
     devEui: row.device?.devEui || null,
     device_name: row.device?.name || null,
@@ -81,140 +84,108 @@ function toMysqlUnderground(row) {
   };
 }
 
-async function insertAirMySQL(obj) {
-  // ===== CAMBIO PRINCIPAL: Manejo inteligente de IDs =====
-  // ANTES (versión original):
-  //   - Se intentaba insertar obj.id directamente
-  //   - Causaba error: "Column 'id' cannot be null" cuando id era null
-  //
-  // ANTES (versión con AUTO_INCREMENT):
-  //   - Se intentó omitir el campo id para que MySQL lo generara
-  //   - No funcionó porque la tabla no tenía AUTO_INCREMENT configurado
-  //   - Error: "Field 'id' doesn't have a default value"
-  //
-  // DESPUÉS (versión actual - SOLUCIÓN FINAL):
-  //   - Si el CSV tiene id válido → Lo preservamos y usamos
-  //   - Si el CSV NO tiene id (null) → Generamos uno único (timestamp * 1000 + random)
-  //   - Si hay duplicados → Actualizamos con ON DUPLICATE KEY UPDATE
-  if (!obj.id || obj.id === null || obj.id === undefined) {
-    obj.id = Date.now() * 1000 + Math.floor(Math.random() * 1000);
-  }
-  
-  // CAMBIO: Agregado ON DUPLICATE KEY UPDATE
-  // ANTES: Sin manejo de duplicados, causaba error "Duplicate entry"
-  // DESPUÉS: Si el id ya existe, actualiza el registro en lugar de fallar
-  const sql = `
-    INSERT INTO air_quality
-    (id, time, devEui, device_name, device_profile, tenant, application, address,
-     lat, lng, sf, bw, dr, co2, temperature, humidity, pressure,
-     co2_status, co2_message, temperature_message, humidity_message, pressure_status)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-    ON DUPLICATE KEY UPDATE
-      time=VALUES(time), devEui=VALUES(devEui), device_name=VALUES(device_name),
-      device_profile=VALUES(device_profile), tenant=VALUES(tenant), application=VALUES(application),
-      address=VALUES(address), lat=VALUES(lat), lng=VALUES(lng), sf=VALUES(sf), bw=VALUES(bw), dr=VALUES(dr),
-      co2=VALUES(co2), temperature=VALUES(temperature), humidity=VALUES(humidity), pressure=VALUES(pressure),
-      co2_status=VALUES(co2_status), co2_message=VALUES(co2_message),
-      temperature_message=VALUES(temperature_message), humidity_message=VALUES(humidity_message),
-      pressure_status=VALUES(pressure_status)
-  `;
-  
-  const vals = [
-    obj.id, obj.time, obj.devEui, obj.device_name, obj.device_profile, obj.tenant, obj.application, obj.address,
-    obj.lat, obj.lng, obj.sf, obj.bw, obj.dr, obj.co2, obj.temperature, obj.humidity, obj.pressure,
-    obj.co2_status, obj.co2_message, obj.temperature_message, obj.humidity_message, obj.pressure_status,
-  ];
-  
-  await pool.query(sql, vals);
-}
+// ===== Buffers por tipo =====
+const BUFFERS = { air: [], noise: [], underground: [] };
+const BATCH_SIZE = Number(process.env.BATCH_SIZE || 1000);
+const FLUSH_MS = Number(process.env.FLUSH_MS || 2000);
 
-async function insertNoiseMySQL(obj) {
-  // ===== MISMO CAMBIO aplicado a tabla noise =====
-  // Genera ID único si no existe, maneja duplicados con ON DUPLICATE KEY UPDATE
-  if (!obj.id || obj.id === null || obj.id === undefined) {
-    obj.id = Date.now() * 1000 + Math.floor(Math.random() * 1000);
-  }
-  
-  const sql = `
-    INSERT INTO noise
-    (id, time, devEui, device_name, device_profile, address, lat, lng, sf, bw, dr,
-     laeq, lai, laimax, battery, status)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-    ON DUPLICATE KEY UPDATE
-      time=VALUES(time), devEui=VALUES(devEui), device_name=VALUES(device_name),
-      device_profile=VALUES(device_profile), address=VALUES(address), lat=VALUES(lat),
-      lng=VALUES(lng), sf=VALUES(sf), bw=VALUES(bw), dr=VALUES(dr),
-      laeq=VALUES(laeq), lai=VALUES(lai), laimax=VALUES(laimax),
-      battery=VALUES(battery), status=VALUES(status)
-  `;
-  
-  const vals = [
-    obj.id, obj.time, obj.devEui, obj.device_name, obj.device_profile, obj.address, obj.lat, obj.lng,
-    obj.sf, obj.bw, obj.dr, obj.laeq, obj.lai, obj.laimax, obj.battery, obj.status,
-  ];
-  
-  await pool.query(sql, vals);
-}
+// Timer de flush periódico
+setInterval(() => flushAll().catch(()=>{}), FLUSH_MS);
 
-async function insertUndergroundMySQL(obj) {
-  // ===== MISMO CAMBIO aplicado a tabla underground =====
-  // Genera ID único si no existe, maneja duplicados con ON DUPLICATE KEY UPDATE
-  if (!obj.id || obj.id === null || obj.id === undefined) {
-    obj.id = Date.now() * 1000 + Math.floor(Math.random() * 1000);
-  }
-  
-  const sql = `
-    INSERT INTO underground
-    (id, time, devEui, device_name, device_profile, address, lat, lng, sf, bw, dr,
-     distance, unit, battery, status)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-    ON DUPLICATE KEY UPDATE
-      time=VALUES(time), devEui=VALUES(devEui), device_name=VALUES(device_name),
-      device_profile=VALUES(device_profile), address=VALUES(address), lat=VALUES(lat),
-      lng=VALUES(lng), sf=VALUES(sf), bw=VALUES(bw), dr=VALUES(dr),
-      distance=VALUES(distance), unit=VALUES(unit), battery=VALUES(battery), status=VALUES(status)
-  `;
-  
-  const vals = [
-    obj.id, obj.time, obj.devEui, obj.device_name, obj.device_profile, obj.address, obj.lat, obj.lng,
-    obj.sf, obj.bw, obj.dr, obj.distance, obj.unit, obj.battery, obj.status,
-  ];
-  
-  await pool.query(sql, vals);
-}
-
-// ----- API principal (usada por controller y por Kafka consumer) -----
+// API principal (la llama el controller y el Kafka consumer)
 export async function ingestRecord(type, payload) {
-  // 1) Mongo
-  if (mongoReady()) {
-    try {
-      if (type === "air")        await AirQualityModel.create(payload);
-      else if (type === "noise") await NoiseModel.create(payload);
-      else if (type === "underground") await UndergroundModel.create(payload);
-    } catch (e) {
-      console.warn("⚠️ Mongo save warning:", e.message);
-    }
-  } else {
-    console.warn("⚠️ Mongo no disponible, se omite save()");
-  }
+  // Normaliza mínimos
+  if (payload?.time && typeof payload.time === "string") payload.time = new Date(payload.time);
 
-  // 2) MySQL (aplanado)
-  try {
-    if (!pool) throw new Error("MySQL pool no inicializado");
-    if (type === "air")        await insertAirMySQL(toMysqlAir(payload));
-    else if (type === "noise") await insertNoiseMySQL(toMysqlNoise(payload));
-    else if (type === "underground") await insertUndergroundMySQL(toMysqlUnderground(payload));
-  } catch (e) {
-    console.error("❌ MySQL insert error:", e.message);
-  }
+  // 1) Buffer Mongo
+  BUFFERS[type].push(payload);
+  if (BUFFERS[type].length >= BATCH_SIZE) await flushType(type);
 
-  // 3) Tiempo real → frontend
+  // 2) Emitir algo al frontend (muestra pequeña para no inundar)
   if (ioRef) {
     ioRef.emit("new-sensor-data", { type, value: flattenForFrontend(type, payload) });
   }
 }
 
-// lo que el frontend espera graficar rápidamente
+async function flushAll() {
+  await Promise.all(["air","noise","underground"].map(flushType));
+}
+
+async function flushType(type) {
+  const list = BUFFERS[type];
+  if (!list.length) return;
+
+  const batch = list.splice(0, list.length);
+
+  // ---- 2.1 Mongo bulk ----
+  if (mongoReady()) {
+    try {
+      if (type === "air") await AirQualityModel.collection.insertMany(batch, { ordered: false });
+      else if (type === "noise") await NoiseModel.collection.insertMany(batch, { ordered: false });
+      else if (type === "underground") await UndergroundModel.collection.insertMany(batch, { ordered: false });
+    } catch (e) {
+      console.warn(`⚠️ Mongo bulk ${type}:`, e.message);
+    }
+  }
+
+  // ---- 2.2 MySQL bulk (ON DUPLICATE) ----
+  try {
+    const sqlMap = {
+      air: `INSERT INTO air_quality
+            (id, time, devEui, device_name, device_profile, tenant, application, address,
+             lat, lng, sf, bw, dr, co2, temperature, humidity, pressure,
+             co2_status, co2_message, temperature_message, humidity_message, pressure_status)
+            VALUES ?
+            ON DUPLICATE KEY UPDATE
+              time=VALUES(time), devEui=VALUES(devEui), device_name=VALUES(device_name),
+              device_profile=VALUES(device_profile), tenant=VALUES(tenant), application=VALUES(application),
+              address=VALUES(address), lat=VALUES(lat), lng=VALUES(lng), sf=VALUES(sf), bw=VALUES(bw), dr=VALUES(dr),
+              co2=VALUES(co2), temperature=VALUES(temperature), humidity=VALUES(humidity), pressure=VALUES(pressure),
+              co2_status=VALUES(co2_status), co2_message=VALUES(co2_message),
+              temperature_message=VALUES(temperature_message), humidity_message=VALUES(humidity_message),
+              pressure_status=VALUES(pressure_status)`,
+      noise: `INSERT INTO noise
+              (id, time, devEui, device_name, device_profile, address, lat, lng, sf, bw, dr,
+               laeq, lai, laimax, battery, status)
+              VALUES ?
+              ON DUPLICATE KEY UPDATE
+                time=VALUES(time), devEui=VALUES(devEui), device_name=VALUES(device_name),
+                device_profile=VALUES(device_profile), address=VALUES(address), lat=VALUES(lat),
+                lng=VALUES(lng), sf=VALUES(sf), bw=VALUES(bw), dr=VALUES(dr),
+                laeq=VALUES(laeq), lai=VALUES(lai), laimax=VALUES(laimax),
+                battery=VALUES(battery), status=VALUES(status)`,
+      underground: `INSERT INTO underground
+                    (id, time, devEui, device_name, device_profile, address, lat, lng, sf, bw, dr,
+                     distance, unit, battery, status)
+                    VALUES ?
+                    ON DUPLICATE KEY UPDATE
+                      time=VALUES(time), devEui=VALUES(devEui), device_name=VALUES(device_name),
+                      device_profile=VALUES(device_profile), address=VALUES(address), lat=VALUES(lat),
+                      lng=VALUES(lng), sf=VALUES(sf), bw=VALUES(bw), dr=VALUES(dr),
+                      distance=VALUES(distance), unit=VALUES(unit), battery=VALUES(battery), status=VALUES(status)`,
+    };
+
+    // mapea batch al formato MySQL
+    const values = batch.map((p) => {
+      if (type === "air") {
+        const o = toMysqlAir(p);
+        return [o.id,o.time,o.devEui,o.device_name,o.device_profile,o.tenant,o.application,o.address,o.lat,o.lng,o.sf,o.bw,o.dr,o.co2,o.temperature,o.humidity,o.pressure,o.co2_status,o.co2_message,o.temperature_message,o.humidity_message,o.pressure_status];
+      }
+      if (type === "noise") {
+        const o = toMysqlNoise(p);
+        return [o.id,o.time,o.devEui,o.device_name,o.device_profile,o.address,o.lat,o.lng,o.sf,o.bw,o.dr,o.laeq,o.lai,o.laimax,o.battery,o.status];
+      }
+      const o = toMysqlUnderground(p);
+      return [o.id,o.time,o.devEui,o.device_name,o.device_profile,o.address,o.lat,o.lng,o.sf,o.bw,o.dr,o.distance,o.unit,o.battery,o.status];
+    });
+
+    await pool.query(sqlMap[type], [values]);
+  } catch (e) {
+    console.error(`❌ MySQL bulk ${type}:`, e.message);
+  }
+}
+
+// ---- payload “ligero” para la UI ----
 function flattenForFrontend(type, p) {
   if (type === "air") {
     return {
@@ -233,15 +204,14 @@ function flattenForFrontend(type, p) {
     };
   }
   return {
-    humidity: p.measures?.humidity ?? null,         // por compat (si algún payload trae)
-    temperature: p.measures?.temperature ?? null,   // por compat
     distance: p.measures?.distance ?? null,
+    humidity: p.measures?.humidity ?? null,
+    temperature: p.measures?.temperature ?? null,
   };
 }
 
-// ----- Queries de lectura para endpoints GET -----
+// ---- lecturas para GET (puedes dejar igual) ----
 export async function fetchLastN(type, n = 50) {
-  if (!pool) throw new Error("MySQL no conectado");
   let sql = "";
   if (type === "air")        sql = "SELECT * FROM air_quality ORDER BY time DESC LIMIT ?";
   else if (type === "noise") sql = "SELECT * FROM noise ORDER BY time DESC LIMIT ?";

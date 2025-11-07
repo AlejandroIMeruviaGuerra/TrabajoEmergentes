@@ -1,38 +1,37 @@
+version: "3.8"
 services:
   zookeeper:
-    image: wurstmeister/zookeeper
+    image: wurstmeister/zookeeper:latest
     container_name: zookeeper
     ports:
       - "2181:2181"
 
   kafka:
-    image: wurstmeister/kafka
+    image: wurstmeister/kafka:latest
     container_name: kafka
     depends_on:
       - zookeeper
     ports:
       - "9092:9092"
     environment:
+      KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
 
-      # Para Windows (host ↔ contenedor):
+      # Listeners para contenedor y para apps en host Windows
       KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
-      
-      # ===== CAMBIO CRÍTICO: KAFKA_ADVERTISED_LISTENERS =====
-      # ANTES: KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://host.docker.internal:9092
-      # DESPUÉS: KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
-      # RAZÓN: En Windows, host.docker.internal no es accesible desde aplicaciones
-      #        que corren en el host (Java ingestor, Node.js backend)
-      #        localhost:9092 permite que tanto contenedores Docker como aplicaciones
-      #        host se conecten correctamente a Kafka
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
-      KAFKA_BROKER_ID: 1
 
-      # Single-broker: obliga factores de réplica a 1
+      # Single-broker sane defaults
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
 
-      # (Opcional) autocreación de topics de datos
+      # Autocreación de topics (crudos y agregados)
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
-      KAFKA_CREATE_TOPICS: "sensores.air:1:1,sensores.noise:1:1,sensores.underground:1:1"
+      KAFKA_CREATE_TOPICS: |
+        sensores.air:1:1,
+        sensores.noise:1:1,
+        sensores.underground:1:1,
+        sensores.air.avg1m:1:1,
+        sensores.noise.avg1m:1:1,
+        sensores.underground.avg1m:1:1

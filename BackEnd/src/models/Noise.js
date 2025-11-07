@@ -2,9 +2,9 @@ import mongoose from "mongoose";
 
 const NoiseSchema = new mongoose.Schema({
   id: String,
-  time: Date,
+  time: { type: Date, index: true },
   device: {
-    devEui: String,
+    devEui: { type: String, index: true },
     name: String,
     profile: String,
   },
@@ -13,6 +13,9 @@ const NoiseSchema = new mongoose.Schema({
   measures: { laeq: Number, lai: Number, laimax: Number },
   battery: Number,
   status: String,
-}, { timestamps: true });
+}, { timestamps: true, collection: "noises" });
+
+NoiseSchema.index({ "device.devEui": 1, time: -1 });
+NoiseSchema.index({ "location.address": 1, time: -1 });
 
 export const NoiseModel = mongoose.model("Noise", NoiseSchema);
