@@ -101,24 +101,50 @@ async function initTables() {
   `;
   await pool.query(ddl);
 
-  // 2) Crear índices (si ya existen, ignorar)
+  // 2) Crear índices optimizados (si ya existen, ignorar)
+  // Índices individuales y compuestos para consultas rápidas
   const indexStmts = [
-    `ALTER TABLE air_quality ADD INDEX idx_air_time (time)`,
-    `ALTER TABLE air_quality ADD INDEX idx_air_dev_time (devEui, time)`,
-    `ALTER TABLE noise ADD INDEX idx_noise_time (time)`,
-    `ALTER TABLE noise ADD INDEX idx_noise_dev_time (devEui, time)`,
-    `ALTER TABLE underground ADD INDEX idx_under_time (time)`,
-    `ALTER TABLE underground ADD INDEX idx_under_dev_time (devEui, time)`
+    // Air Quality - Índices para consultas comunes
+    `CREATE INDEX IF NOT EXISTS idx_air_time ON air_quality(time)`,
+    `CREATE INDEX IF NOT EXISTS idx_air_devEui ON air_quality(devEui)`,
+    `CREATE INDEX IF NOT EXISTS idx_air_time_dev ON air_quality(time, devEui)`,
+    `CREATE INDEX IF NOT EXISTS idx_air_created ON air_quality(created_at)`,
+    
+    // Noise - Índices para consultas comunes
+    `CREATE INDEX IF NOT EXISTS idx_noise_time ON noise(time)`,
+    `CREATE INDEX IF NOT EXISTS idx_noise_devEui ON noise(devEui)`,
+    `CREATE INDEX IF NOT EXISTS idx_noise_time_dev ON noise(time, devEui)`,
+    `CREATE INDEX IF NOT EXISTS idx_noise_created ON noise(created_at)`,
+    
+    // Underground - Índices para consultas comunes
+    `CREATE INDEX IF NOT EXISTS idx_underground_time ON underground(time)`,
+    `CREATE INDEX IF NOT EXISTS idx_underground_devEui ON underground(devEui)`,
+    `CREATE INDEX IF NOT EXISTS idx_underground_time_dev ON underground(time, devEui)`,
+    `CREATE INDEX IF NOT EXISTS idx_underground_created ON underground(created_at)`,
+    
+    // Agregados 1m - Índices para ventanas temporales
+    `CREATE INDEX IF NOT EXISTS idx_air_agg_window ON air_quality_agg_1m(ts_window)`,
+    `CREATE INDEX IF NOT EXISTS idx_noise_agg_window ON noise_agg_1m(ts_window)`,
+    `CREATE INDEX IF NOT EXISTS idx_underground_agg_window ON underground_agg_1m(ts_window)`
   ];
 
+  let indexCreated = 0;
+  let indexSkipped = 0;
+
   for (const sql of indexStmts) {
-    try { await pool.query(sql); }
+    try { 
+      await pool.query(sql);
+      indexCreated++;
+    }
     catch (e) {
-      // 1061 = "Duplicate key name" (índice ya existe) -> lo ignoramos
-      if (e && e.errno !== 1061) console.warn(`⚠️ Índice: ${e.message}`);
+      // Índice ya existe o error menor - continuar
+      indexSkipped++;
+      if (e && e.errno !== 1061 && !e.message.includes('Duplicate key')) {
+        console.warn(`⚠️ Índice: ${e.message}`);
+      }
     }
   }
 
-  console.log("✅ Tablas e índices verificados");
+  console.log(`✅ Tablas verificadas | Índices: ${indexCreated} creados, ${indexSkipped} ya existían`);
 }
 

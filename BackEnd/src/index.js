@@ -6,16 +6,18 @@ import { createServer } from "http";
 import { Server as SocketServer } from "socket.io";
 
 // Conexiones
-import { connectMySQL } from "./config/db_mysql.js";
+import { connectMySQL, pool as mysqlPool } from "./config/db_mysql.js";
 import { connectMongo } from "./config/db_mongo.js";
+import mongoose from "mongoose";
 
 // Rutas
 import sensorsRoutes from "./routes/sensors.routes.js";
 import authRoutes from "./routes/auth.routes.js";
 import uploadsRoutes from "./routes/uploads.routes.js";
+import healthRoutes from "./routes/health.routes.js";
 
 // Kafka
-import { startConsumer, setSocketIO } from "./kafka/consumer.js";
+import { startConsumer, setSocketIO, stopConsumer } from "./kafka/consumer.js";
 // import { sendMockData } from "./kafka/producer.js"; // opcional
 
 dotenv.config();
@@ -34,10 +36,11 @@ app.use(express.json()); // para JSON (uploads por chunk usan express.raw en su 
 app.use("/api/sensors", sensorsRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/uploads", uploadsRoutes);
+app.use("/api/health", healthRoutes);
 
-// Healthcheck
-app.get("/api/health", (_req, res) => {
-  res.json({ ok: true, msg: "Servidor operativo", ts: Date.now() });
+// Healthcheck legacy (mantener por compatibilidad, pero usar /api/health/)
+app.get("/health", (_req, res) => {
+  res.json({ ok: true, msg: "Servidor operativo (usar /api/health para check completo)", ts: Date.now() });
 });
 
 // Socket.IO
@@ -74,3 +77,38 @@ app.set("io", io);
     process.exit(1);
   }
 })();
+
+// Graceful shutdown
+const shutdown = async (signal) => {
+  console.log(`\n🛑 ${signal} recibido, cerrando servidor...`);
+  
+  try {
+    // Cerrar servidor HTTP
+    server.close(() => {
+      console.log("✅ Servidor HTTP cerrado");
+    });
+    
+    // Desconectar Kafka consumer
+    await stopConsumer();
+    
+    // Cerrar conexiones DB
+    if (mysqlPool) {
+      await mysqlPool.end();
+      console.log("✅ MySQL desconectado");
+    }
+    
+    if (mongoose.connection) {
+      await mongoose.connection.close();
+      console.log("✅ MongoDB desconectado");
+    }
+    
+    console.log("👋 Shutdown completado");
+    process.exit(0);
+  } catch (error) {
+    console.error("❌ Error durante shutdown:", error.message);
+    process.exit(1);
+  }
+};
+
+process.on("SIGTERM", () => shutdown("SIGTERM"));
+process.on("SIGINT", () => shutdown("SIGINT"));

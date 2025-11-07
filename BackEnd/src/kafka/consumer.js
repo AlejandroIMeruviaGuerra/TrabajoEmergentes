@@ -2,6 +2,8 @@
 import { Kafka, logLevel } from "kafkajs";
 import { ingestRecord, setIO as setIOIngest } from "../services/ingest.service.js";
 import { pool } from "../config/db_mysql.js";
+import { setKafkaConsumerStatus } from "../utils/health.js";
+import { consumerMetrics } from "./metrics.js";
 
 let kafka = null;
 let consumer = null;
@@ -28,6 +30,8 @@ export async function startConsumer() {
   });
 
   await consumer.connect();
+  console.log("✅ Kafka consumer conectado");
+  setKafkaConsumerStatus(true); // Actualizar estado para health check
 
   // Crudos
   await consumer.subscribe({ topic: "sensores.air", fromBeginning: true });
@@ -43,6 +47,8 @@ export async function startConsumer() {
 
   await consumer.run({
     eachMessage: async ({ topic, message }) => {
+      const startTime = Date.now();
+      
       try {
         const key = message.key?.toString() || null;
         const payload = JSON.parse(message.value.toString());
@@ -51,6 +57,10 @@ export async function startConsumer() {
         if (topic === "sensores.air" || topic === "sensores.noise" || topic === "sensores.underground") {
           const type = topic.split(".")[1]; // air | noise | underground
           await ingestRecord(type, payload);
+          
+          // Registrar métrica exitosa
+          const processingTime = Date.now() - startTime;
+          consumerMetrics.recordMessage(topic, processingTime);
           return;
         }
 
@@ -78,6 +88,10 @@ export async function startConsumer() {
           );
 
           io?.emit("air:avg1m", { devEui: key, co2, temperature, humidity, pressure, count: payload.count, at: ts });
+          
+          // Registrar métrica exitosa
+          const processingTime = Date.now() - startTime;
+          consumerMetrics.recordMessage(topic, processingTime);
           return;
         }
 
@@ -102,6 +116,9 @@ export async function startConsumer() {
           );
 
           io?.emit("noise:avg1m", { devEui: key, laeq, lai, laimax, count: payload.count, at: ts });
+          
+          const processingTime = Date.now() - startTime;
+          consumerMetrics.recordMessage(topic, processingTime);
           return;
         }
 
@@ -122,12 +139,54 @@ export async function startConsumer() {
           );
 
           io?.emit("underground:avg1m", { devEui: key, distance, count: payload.count, at: ts });
+          
+          const processingTime = Date.now() - startTime;
+          consumerMetrics.recordMessage(topic, processingTime);
           return;
         }
 
       } catch (e) {
         console.error("❌ Kafka eachMessage:", e.message);
+        consumerMetrics.recordError(topic);
       }
     },
   });
+
+  // Manejadores de eventos para health monitoring
+  consumer.on(consumer.events.DISCONNECT, () => {
+    console.log("🔴 Kafka consumer desconectado");
+    setKafkaConsumerStatus(false);
+  });
+
+  consumer.on(consumer.events.CONNECT, () => {
+    console.log("🟢 Kafka consumer reconectado");
+    setKafkaConsumerStatus(true);
+  });
+
+  consumer.on(consumer.events.CRASH, ({ error }) => {
+    console.error("💥 Kafka consumer crash:", error.message);
+    setKafkaConsumerStatus(false);
+  });
+}
+
+/**
+ * Detener el consumer gracefully
+ */
+export async function stopConsumer() {
+  if (consumer) {
+    try {
+      await consumer.disconnect();
+      setKafkaConsumerStatus(false);
+      console.log("✅ Kafka consumer desconectado correctamente");
+    } catch (e) {
+      console.error("❌ Error al desconectar consumer:", e.message);
+    }
+  }
+}
+
+/**
+ * Obtener métricas del consumer
+ */
+export function getConsumerMetrics() {
+  return consumerMetrics.getMetrics();
 }

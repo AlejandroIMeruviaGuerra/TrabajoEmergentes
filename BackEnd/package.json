@@ -6,7 +6,9 @@
   "type": "module",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "nodemon src/index.js"
+    "dev": "nodemon src/index.js",
+    "verify:indexes": "node src/utils/verify-indexes.js",
+    "test:health": "node src/utils/test-health.js"
   },
   "keywords": [],
   "author": "",
