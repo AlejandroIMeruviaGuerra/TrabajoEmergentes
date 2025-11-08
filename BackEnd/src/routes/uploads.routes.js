@@ -6,8 +6,12 @@ import {
   statusUpload,
   completeUpload,
 } from "../services/upload.service.js";
+import { apiLimiter, writeApiLimiter } from "../middleware/rateLimiter.js";
 
 const router = express.Router();
+
+// Aplicar rate limiting general a todas las rutas de uploads
+router.use(apiLimiter);
 
 // Init: filename, size, type (air|noise|underground)
 router.post("/init", express.json(), (req, res) => {

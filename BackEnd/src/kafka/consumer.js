@@ -4,6 +4,15 @@ import { ingestRecord, setIO as setIOIngest } from "../services/ingest.service.j
 import { pool } from "../config/db_mysql.js";
 import { setKafkaConsumerStatus } from "../utils/health.js";
 import { consumerMetrics } from "./metrics.js";
+import {
+  airCrudeSchema,
+  noiseCrudeSchema,
+  undergroundCrudeSchema,
+  airAggregatedSchema,
+  noiseAggregatedSchema,
+  undergroundAggregatedSchema,
+  validateData
+} from "./schemas/sensor.schemas.js";
 
 let kafka = null;
 let consumer = null;
@@ -53,10 +62,27 @@ export async function startConsumer() {
         const key = message.key?.toString() || null;
         const payload = JSON.parse(message.value.toString());
 
-        // 1) Crudos → usa tu pipeline actual
+        // 1) Crudos → validar y procesar
         if (topic === "sensores.air" || topic === "sensores.noise" || topic === "sensores.underground") {
           const type = topic.split(".")[1]; // air | noise | underground
-          await ingestRecord(type, payload);
+          
+          // Seleccionar schema según tipo
+          let schema;
+          if (type === "air") schema = airCrudeSchema;
+          else if (type === "noise") schema = noiseCrudeSchema;
+          else if (type === "underground") schema = undergroundCrudeSchema;
+          
+          // Validar payload
+          const validation = validateData(payload, schema);
+          
+          if (!validation.valid) {
+            console.error(`❌ Validación fallida para ${topic}:`, validation.errors);
+            consumerMetrics.recordError(topic);
+            return; // Descartar mensaje inválido
+          }
+          
+          // Procesar con datos validados
+          await ingestRecord(type, validation.value);
           
           // Registrar métrica exitosa
           const processingTime = Date.now() - startTime;
@@ -64,30 +90,41 @@ export async function startConsumer() {
           return;
         }
 
-        // 2) Agregados → guardar en *_agg_1m y emitir evento específico
+        // 2) Agregados → validar y guardar en *_agg_1m y emitir evento específico
         if (topic === "sensores.air.avg1m") {
-          // Esperado desde Streams: { sum_co2,sum_t,sum_h,sum_p,count,locationName? }
-          const co2 = payload.sum_co2 / payload.count;
-          const temperature = payload.sum_t / payload.count;
-          const humidity = payload.sum_h / payload.count;
-          const pressure = payload.sum_p / payload.count;
+          // Validar payload agregado
+          const validation = validateData(payload, airAggregatedSchema);
+          
+          if (!validation.valid) {
+            console.error(`❌ Validación fallida para ${topic}:`, validation.errors);
+            consumerMetrics.recordError(topic);
+            return; // Descartar mensaje inválido
+          }
+          
+          const validPayload = validation.value;
+          
+          // Calcular promedios con datos validados
+          const co2 = validPayload.sum_co2 / validPayload.count;
+          const temperature = validPayload.sum_temperature / validPayload.count;
+          const humidity = validPayload.sum_humidity / validPayload.count;
+          const voc = validPayload.sum_voc / validPayload.count;
           const ts = new Date();
 
           await pool.query(
             `INSERT INTO air_quality_agg_1m
-               (devEui, ts_window, location_name, co2_avg, temperature_avg, humidity_avg, pressure_avg, count)
+               (devEui, ts_window, location_name, co2_avg, temperature_avg, humidity_avg, voc_avg, count)
              VALUES (?,?,?,?,?,?,?,?)
              ON DUPLICATE KEY UPDATE
                location_name=VALUES(location_name),
                co2_avg=VALUES(co2_avg),
                temperature_avg=VALUES(temperature_avg),
                humidity_avg=VALUES(humidity_avg),
-               pressure_avg=VALUES(pressure_avg),
+               voc_avg=VALUES(voc_avg),
                count=VALUES(count)`,
-            [key, ts, payload.locationName ?? null, co2, temperature, humidity, pressure, payload.count]
+            [key, ts, validPayload.locationName ?? null, co2, temperature, humidity, voc, validPayload.count]
           );
 
-          io?.emit("air:avg1m", { devEui: key, co2, temperature, humidity, pressure, count: payload.count, at: ts });
+          io?.emit("air:avg1m", { devEui: key, co2, temperature, humidity, voc, count: validPayload.count, at: ts });
           
           // Registrar métrica exitosa
           const processingTime = Date.now() - startTime;
@@ -96,10 +133,21 @@ export async function startConsumer() {
         }
 
         if (topic === "sensores.noise.avg1m") {
-          // { sum_laeq,sum_lai,sum_laimax,count,locationName? }
-          const laeq = payload.sum_laeq / payload.count;
-          const lai  = payload.sum_lai  / payload.count;
-          const laimax = payload.sum_laimax / payload.count;
+          // Validar payload agregado
+          const validation = validateData(payload, noiseAggregatedSchema);
+          
+          if (!validation.valid) {
+            console.error(`❌ Validación fallida para ${topic}:`, validation.errors);
+            consumerMetrics.recordError(topic);
+            return; // Descartar mensaje inválido
+          }
+          
+          const validPayload = validation.value;
+          
+          // Calcular promedios con datos validados
+          const laeq = validPayload.sum_laeq / validPayload.count;
+          const lai  = validPayload.sum_lai  / validPayload.count;
+          const laimax = validPayload.sum_laimax / validPayload.count;
           const ts = new Date();
 
           await pool.query(
@@ -112,10 +160,10 @@ export async function startConsumer() {
                lai_avg=VALUES(lai_avg),
                laimax_avg=VALUES(laimax_avg),
                count=VALUES(count)`,
-            [key, ts, payload.locationName ?? null, laeq, lai, laimax, payload.count]
+            [key, ts, validPayload.locationName ?? null, laeq, lai, laimax, validPayload.count]
           );
 
-          io?.emit("noise:avg1m", { devEui: key, laeq, lai, laimax, count: payload.count, at: ts });
+          io?.emit("noise:avg1m", { devEui: key, laeq, lai, laimax, count: validPayload.count, at: ts });
           
           const processingTime = Date.now() - startTime;
           consumerMetrics.recordMessage(topic, processingTime);
@@ -123,8 +171,17 @@ export async function startConsumer() {
         }
 
         if (topic === "sensores.underground.avg1m") {
-          // { sum_distance,count,locationName? }
-          const distance = payload.sum_distance / payload.count;
+          // Validar payload con undergroundAggregatedSchema
+          const validation = validateData(payload, undergroundAggregatedSchema);
+          
+          if (!validation.valid) {
+            console.error(`[CONSUMER] Validación fallida para ${topic}, key=${key}:`, validation.errors);
+            consumerMetrics.recordError(topic);
+            return; // Descartar mensaje inválido
+          }
+          
+          const validPayload = validation.value;
+          const distance = validPayload.sum_distance / validPayload.count;
           const ts = new Date();
 
           await pool.query(
@@ -135,10 +192,10 @@ export async function startConsumer() {
                location_name=VALUES(location_name),
                distance_avg=VALUES(distance_avg),
                count=VALUES(count)`,
-            [key, ts, payload.locationName ?? null, distance, payload.count]
+            [key, ts, validPayload.locationName ?? null, distance, validPayload.count]
           );
 
-          io?.emit("underground:avg1m", { devEui: key, distance, count: payload.count, at: ts });
+          io?.emit("underground:avg1m", { devEui: key, distance, count: validPayload.count, at: ts });
           
           const processingTime = Date.now() - startTime;
           consumerMetrics.recordMessage(topic, processingTime);

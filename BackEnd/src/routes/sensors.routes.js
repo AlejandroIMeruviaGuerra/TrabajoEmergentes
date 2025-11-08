@@ -4,8 +4,12 @@ import { registerSensorData, listByType } from "../controllers/sensors.controlle
 import { AirQualityModel } from "../models/AirQuality.js";
 import { NoiseModel } from "../models/Noise.js";
 import { UndergroundModel } from "../models/Underground.js";
+import { apiLimiter, writeApiLimiter } from "../middleware/rateLimiter.js";
 
 const router = Router();
+
+// Aplicar rate limiting general a todas las rutas de sensores
+router.use(apiLimiter);
 
 // ===== CAMBIO: NUEVO ENDPOINT AGREGADO =====
 // ANTES: No existía endpoint para consultar conteos de MongoDB
@@ -31,10 +35,12 @@ router.get("/mongo/count", async (req, res) => {
   }
 });
 
-// GET últimos N (por defecto 50) -> desde MySQL
+// GET últimos N con paginación -> desde MySQL
+// Soporta query params: ?page=1&limit=50
 router.get("/:type", listByType);
 
 // POST ingesta directa (útil para pruebas o para otro productor no-Kafka)
-router.post("/:type", registerSensorData);
+// Rate limiting estricto para escrituras
+router.post("/:type", writeApiLimiter, registerSensorData);
 
 export default router;

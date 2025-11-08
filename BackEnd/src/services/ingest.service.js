@@ -220,3 +220,43 @@ export async function fetchLastN(type, n = 50) {
   const [rows] = await pool.query(sql, [n]);
   return rows;
 }
+
+/**
+ * Obtener datos paginados con conteo total
+ * @param {string} type - Tipo de sensor: 'air', 'noise', 'underground'
+ * @param {number} page - Número de página (1-indexed)
+ * @param {number} limit - Cantidad de registros por página
+ * @returns {Promise<{rows: Array, total: number}>}
+ */
+export async function fetchPaginated(type, page = 1, limit = 50) {
+  // Validar tipo
+  const validTypes = ["air", "noise", "underground"];
+  if (!validTypes.includes(type)) {
+    throw new Error("Tipo inválido");
+  }
+
+  // Mapear tipo a nombre de tabla
+  const tableMap = {
+    air: "air_quality",
+    noise: "noise",
+    underground: "underground"
+  };
+  const tableName = tableMap[type];
+
+  // Calcular offset
+  const offset = (page - 1) * limit;
+
+  // Query para obtener datos paginados
+  const dataSql = `SELECT * FROM ${tableName} ORDER BY time DESC LIMIT ? OFFSET ?`;
+  const [rows] = await pool.query(dataSql, [limit, offset]);
+
+  // Query para obtener conteo total
+  const countSql = `SELECT COUNT(*) as total FROM ${tableName}`;
+  const [countResult] = await pool.query(countSql);
+  const total = countResult[0].total;
+
+  return {
+    rows,
+    total
+  };
+}
