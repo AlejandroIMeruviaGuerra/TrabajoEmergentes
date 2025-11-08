@@ -55,12 +55,19 @@ export async function startConsumer() {
   console.log("✅ Kafka consumer suscrito a crudos y agregados (avg1m)");
 
   await consumer.run({
-    eachMessage: async ({ topic, message }) => {
+    eachMessage: async ({ topic, message, partition }) => {
       const startTime = Date.now();
       
       try {
         const key = message.key?.toString() || null;
         const payload = JSON.parse(message.value.toString());
+
+        // Métricas avanzadas: registrar tamaño del mensaje
+        const messageSize = message.value.length;
+        consumerMetrics.recordMessageSize(messageSize);
+        
+        // Métricas avanzadas: registrar timestamp para throughput
+        consumerMetrics.recordMessageTimestamp(topic);
 
         // 1) Crudos → validar y procesar
         if (topic === "sensores.air" || topic === "sensores.noise" || topic === "sensores.underground") {
@@ -84,9 +91,10 @@ export async function startConsumer() {
           // Procesar con datos validados
           await ingestRecord(type, validation.value);
           
-          // Registrar métrica exitosa
+          // Registrar métricas exitosas
           const processingTime = Date.now() - startTime;
           consumerMetrics.recordMessage(topic, processingTime);
+          consumerMetrics.recordLatency(processingTime); // Métrica avanzada
           return;
         }
 
@@ -126,9 +134,10 @@ export async function startConsumer() {
 
           io?.emit("air:avg1m", { devEui: key, co2, temperature, humidity, voc, count: validPayload.count, at: ts });
           
-          // Registrar métrica exitosa
+          // Registrar métricas exitosas
           const processingTime = Date.now() - startTime;
           consumerMetrics.recordMessage(topic, processingTime);
+          consumerMetrics.recordLatency(processingTime); // Métrica avanzada
           return;
         }
 
@@ -167,6 +176,7 @@ export async function startConsumer() {
           
           const processingTime = Date.now() - startTime;
           consumerMetrics.recordMessage(topic, processingTime);
+          consumerMetrics.recordLatency(processingTime); // Métrica avanzada
           return;
         }
 
@@ -199,6 +209,7 @@ export async function startConsumer() {
           
           const processingTime = Date.now() - startTime;
           consumerMetrics.recordMessage(topic, processingTime);
+          consumerMetrics.recordLatency(processingTime); // Métrica avanzada
           return;
         }
 
@@ -242,8 +253,15 @@ export async function stopConsumer() {
 }
 
 /**
- * Obtener métricas del consumer
+ * Obtener métricas del consumer (básicas)
  */
 export function getConsumerMetrics() {
   return consumerMetrics.getMetrics();
+}
+
+/**
+ * Obtener métricas avanzadas del consumer
+ */
+export function getAdvancedConsumerMetrics() {
+  return consumerMetrics.getAllMetrics();
 }

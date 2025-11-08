@@ -1,7 +1,7 @@
 // src/routes/health.routes.js
 import { Router } from "express";
 import { performHealthCheck, performReadinessCheck } from "../utils/health.js";
-import { getConsumerMetrics } from "../kafka/consumer.js";
+import { getConsumerMetrics, getAdvancedConsumerMetrics } from "../kafka/consumer.js";
 
 const router = Router();
 
@@ -117,6 +117,26 @@ router.get("/consumer", (req, res) => {
   } catch (error) {
     res.status(500).json({
       error: "Failed to retrieve consumer metrics",
+      message: error.message,
+      timestamp: Date.now()
+    });
+  }
+});
+
+/**
+ * GET /api/health/consumer/advanced
+ * Métricas avanzadas del Kafka consumer
+ * Incluye latencia (P50/P95/P99), throughput por topic, tamaño de mensajes, y consumer lag
+ */
+router.get("/consumer/advanced", (req, res) => {
+  try {
+    const metrics = getAdvancedConsumerMetrics();
+    
+    // Incluir todas las métricas (básicas + avanzadas)
+    res.json(metrics);
+  } catch (error) {
+    res.status(500).json({
+      error: "Failed to retrieve advanced consumer metrics",
       message: error.message,
       timestamp: Date.now()
     });
