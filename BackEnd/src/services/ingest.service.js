@@ -17,26 +17,35 @@ function ensureId(str) {
   return str ?? String(Date.now() * 1000 + Math.floor(Math.random() * 1000));
 }
 
-// ---- Aplana para MySQL (igual a los tuyos) ----
+// ---- Aplana para MySQL (soporta formato anidado Y plano) ----
+// MODIFICADO: Se agregaron fallbacks para soportar ambos formatos de mensaje:
+//   - Formato anidado (sistema real): { device: { devEui: ... }, measures: { co2: ... } }
+//   - Formato plano (pruebas): { devEui: ..., co2: ... }
+// Cambios específicos:
+//   - devEui: Ahora busca en row.device?.devEui || row.devEui
+//   - address: Ahora busca en row.location?.address || row.locationName
+//   - co2, temperature, humidity, pressure: Busca en row.measures?.X ?? row.X
+// Esto permite que mensajes de Kafka con estructura simple pasen validación Joi
+// y se persistan correctamente en MySQL sin perder datos.
 function toMysqlAir(row) {
   return {
     id: ensureId(row.id),
     time: row.time ? new Date(row.time) : null,
-    devEui: row.device?.devEui || null,
+    devEui: row.device?.devEui || row.devEui || null, // MODIFICADO: Soporte formato plano
     device_name: row.device?.name || null,
     device_profile: row.device?.profile || null,
     tenant: row.device?.tenant || null,
     application: row.device?.application || null,
-    address: row.location?.address || null,
+    address: row.location?.address || row.locationName || null, // MODIFICADO: Soporte locationName
     lat: row.location?.lat ?? null,
     lng: row.location?.lng ?? null,
     sf: row.radio?.sf ?? null,
     bw: row.radio?.bw ?? null,
     dr: row.radio?.dr ?? null,
-    co2: row.measures?.co2 ?? null,
-    temperature: row.measures?.temperature ?? null,
-    humidity: row.measures?.humidity ?? null,
-    pressure: row.measures?.pressure ?? null,
+    co2: row.measures?.co2 ?? row.co2 ?? null, // MODIFICADO: Soporte formato plano
+    temperature: row.measures?.temperature ?? row.temperature ?? null, // MODIFICADO: Soporte formato plano
+    humidity: row.measures?.humidity ?? row.humidity ?? null, // MODIFICADO: Soporte formato plano
+    pressure: row.measures?.pressure ?? row.pressure ?? null, // MODIFICADO: Soporte formato plano
     co2_status: row.labels?.co2_status || null,
     co2_message: row.labels?.co2_message || null,
     temperature_message: row.labels?.temperature_message || null,
@@ -44,40 +53,50 @@ function toMysqlAir(row) {
     pressure_status: row.labels?.pressure_status || null,
   };
 }
+// MODIFICADO: Misma lógica que toMysqlAir - soporte para formato anidado Y plano
+// Cambios específicos:
+//   - devEui: row.device?.devEui || row.devEui
+//   - address: row.location?.address || row.locationName
+//   - laeq, lai, laimax: row.measures?.X ?? row.X
 function toMysqlNoise(row) {
   return {
     id: ensureId(row.id),
     time: row.time ? new Date(row.time) : null,
-    devEui: row.device?.devEui || null,
+    devEui: row.device?.devEui || row.devEui || null, // MODIFICADO: Soporte formato plano
     device_name: row.device?.name || null,
     device_profile: row.device?.profile || null,
-    address: row.location?.address || null,
+    address: row.location?.address || row.locationName || null, // MODIFICADO: Soporte locationName
     lat: row.location?.lat ?? null,
     lng: row.location?.lng ?? null,
     sf: row.radio?.sf ?? null,
     bw: row.radio?.bw ?? null,
     dr: row.radio?.dr ?? null,
-    laeq: row.measures?.laeq ?? null,
-    lai: row.measures?.lai ?? null,
-    laimax: row.measures?.laimax ?? null,
+    laeq: row.measures?.laeq ?? row.laeq ?? null, // MODIFICADO: Soporte formato plano
+    lai: row.measures?.lai ?? row.lai ?? null, // MODIFICADO: Soporte formato plano
+    laimax: row.measures?.laimax ?? row.laimax ?? null, // MODIFICADO: Soporte formato plano
     battery: row.battery ?? null,
     status: row.status || null,
   };
 }
+// MODIFICADO: Misma lógica que toMysqlAir y toMysqlNoise - soporte para formato anidado Y plano
+// Cambios específicos:
+//   - devEui: row.device?.devEui || row.devEui
+//   - address: row.location?.address || row.locationName
+//   - distance: row.measures?.distance ?? row.distance
 function toMysqlUnderground(row) {
   return {
     id: ensureId(row.id),
     time: row.time ? new Date(row.time) : null,
-    devEui: row.device?.devEui || null,
+    devEui: row.device?.devEui || row.devEui || null, // MODIFICADO: Soporte formato plano
     device_name: row.device?.name || null,
     device_profile: row.device?.profile || null,
-    address: row.location?.address || null,
+    address: row.location?.address || row.locationName || null, // MODIFICADO: Soporte locationName
     lat: row.location?.lat ?? null,
     lng: row.location?.lng ?? null,
     sf: row.radio?.sf ?? null,
     bw: row.radio?.bw ?? null,
     dr: row.radio?.dr ?? null,
-    distance: row.measures?.distance ?? null,
+    distance: row.measures?.distance ?? row.distance ?? null, // MODIFICADO: Soporte formato plano
     unit: row.measures?.unit || null,
     battery: row.battery ?? null,
     status: row.status || null,

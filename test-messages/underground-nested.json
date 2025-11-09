@@ -1,0 +1,1 @@
+{"id":"1762713645257003","time":"2025-11-09T18:30:00Z","device":{"devEui":"eui-0000000000000003","name":"TEST-UNDERGROUND-SENSOR-001","profile":"underground-v1"},"location":{"address":"Test Underground Location","lat":-16.5100,"lng":-68.1400},"radio":{"sf":7,"bw":125,"dr":5},"measures":{"distance":145.8,"unit":"cm"},"battery":88,"status":"OK"}

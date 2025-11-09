@@ -1,0 +1,1 @@
+{"id":"1762713645257002","time":"2025-11-09T18:30:00Z","device":{"devEui":"eui-0000000000000002","name":"TEST-NOISE-SENSOR-001","profile":"noise-v1"},"location":{"address":"Test Noise Location","lat":-16.5050,"lng":-68.1450},"radio":{"sf":7,"bw":125,"dr":5},"measures":{"laeq":72.5,"lai":70.2,"laimax":85.3},"battery":95,"status":"OK"}

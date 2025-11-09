@@ -1,0 +1,9 @@
+{
+  "devEui": "eui-0000000000000001",
+  "time": "2025-11-09T18:30:00Z",
+  "temperature": 18.2,
+  "humidity": 65.0,
+  "co2": 450.5,
+  "voc": 125.3,
+  "locationName": "TEST-LOCATION-001"
+}
