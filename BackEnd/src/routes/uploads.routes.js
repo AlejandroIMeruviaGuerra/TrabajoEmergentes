@@ -14,11 +14,11 @@ const router = express.Router();
 router.use(apiLimiter);
 
 // Init: filename, size, type (air|noise|underground)
-router.post("/init", express.json(), (req, res) => {
+router.post("/init", express.json(), async (req, res) => {
   try {
     const { filename, size, type } = req.body;
     if (!filename || !size || !type) return res.status(400).json({ ok: false, msg: "filename, size, type requeridos" });
-    const data = initUpload({ filename, size, type });
+    const data = await initUpload({ filename, size, type });
     return res.json({ ok: true, ...data });
   } catch (e) {
     return res.status(500).json({ ok: false, msg: e.message });

@@ -5,6 +5,10 @@ import crypto from "crypto";
 import { fileURLToPath } from "url";
 import { Kafka, Partitioners, logLevel } from "kafkajs";
 import csv from "fast-csv";
+import Upload from "../models/Upload.model.js";
+import { triggerIngestor } from "../workers/ingest-trigger.js";
+
+
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -21,11 +25,25 @@ const sessions = new Map();
 const newId = () => crypto.randomBytes(16).toString("hex");
 
 // ---- Init de subida ----
-export function initUpload({ filename, size, type }) {
+export async function initUpload({ filename, size, type }) {
   const id = newId();
   const parts = Math.ceil(size / CHUNK_SIZE);
   const folder = path.join(UPLOAD_DIR, id);
   fs.mkdirSync(folder, { recursive: true });
+  
+  const meta = {
+    uploadId: id,
+    filename,
+    size,
+    chunkSize: CHUNK_SIZE,
+    totalChunks: parts,
+    type,
+    status: "in_progress",
+  };
+
+  // Guardar en Mongo
+  await Upload.create(meta);
+
 
   sessions.set(id, {
     id, filename, size, type,
@@ -50,6 +68,12 @@ export async function writeChunk(id, partIndex, buffer) {
   const tmpPath = path.join(s.folder, `${partName}.part`);
   await fs.promises.writeFile(tmpPath, buffer);
   s.received.add(partIndex);
+
+  // Actualiza progreso en Mongo
+  await Upload.updateOne(
+    { uploadId: id },
+    { $addToSet: { receivedChunks: partIndex }, $set: { status: "in_progress" } }
+  );
 
   return { received: s.received.size, partsExpected: s.partsExpected };
 }
@@ -93,6 +117,20 @@ export async function completeUpload(id, io) {
   await new Promise((res) => out.end(res));
   s.assembledPath = outPath;
 
+  // Actualiza registro Mongo
+  await Upload.updateOne(
+    { uploadId: id },
+    { $set: { filePath: outPath, status: "completed" } }
+  );
+
+  // Llamar al Ingestor Java después de ensamblar el CSV
+try {
+  await triggerIngestor(s.type, s.assembledPath);
+} catch (err) {
+  console.error("⚠️ Error al ejecutar el Ingestor Java:", err.message);
+}
+
+  
   // Limpia partes (opcional)
   for (let i = 0; i < s.partsExpected; i++) {
     const partName = String(i).padStart(6, "0");
