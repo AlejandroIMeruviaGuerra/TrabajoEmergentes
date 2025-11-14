@@ -28,10 +28,4 @@ services:
 
       # Autocreación de topics (crudos y agregados)
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
-      KAFKA_CREATE_TOPICS: |
-        sensores.air:1:1,
-        sensores.noise:1:1,
-        sensores.underground:1:1,
-        sensores.air.avg1m:1:1,
-        sensores.noise.avg1m:1:1,
-        sensores.underground.avg1m:1:1
+      KAFKA_CREATE_TOPICS: "sensores.air:1:1,sensores.noise:1:1,sensores.underground:1:1,sensores.air.avg1m:1:1,sensores.noise.avg1m:1:1,sensores.underground.avg1m:1:1"
