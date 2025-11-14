@@ -40,10 +40,11 @@ public class KafkaPublisherObserver implements Observer {
       };
 
       // particionamiento por devEui (si no hay, cae a id o "unk")
-      String key = null;
+      String key;
       if (record.device != null && record.device.get("devEui") != null) {
-        key = record.device.get("devEui").asText();
-      } else if (record.id != null) {
+        Object devEuiObj = record.device.get("devEui");
+        key = devEuiObj.toString();   // usamos toString() porque es un Object
+      } else if (record.id != null && !record.id.isBlank()) {
         key = record.id;
       } else {
         key = "unk";
