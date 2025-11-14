@@ -1,0 +1,11 @@
+commit a15aad34a12bd7e6a0fa73450e15203ef3d7d032
+Author: LuisMarioGarciaj <gcl0033412@est.univalle.edu>
+Date:   Thu Nov 13 23:12:10 2025 -0400
+
+    Implementacion de kafka streams casii
+
+commit 69d0f8105b35ad1dc3d599640c3dd8f454176652
+Author: LuisMarioGarciaj <gcl0033412@est.univalle.edu>
+Date:   Thu Oct 30 21:35:17 2025 -0400
+
+    implementacion del sidebar y la seccion para subir los archivos csv (casi funcional )

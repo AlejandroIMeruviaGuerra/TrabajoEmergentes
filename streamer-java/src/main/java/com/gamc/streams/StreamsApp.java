@@ -251,28 +251,21 @@ public class StreamsApp {
     }
   }
 
+  // MODIFICADO: Enviar sumas en lugar de promedios
   static String finalizeAir(String devEui, long start, long end, String aggJson) {
     try {
       JsonNode agg = MAPPER.readTree(aggJson);
       long count = agg.path("count").asLong(0);
       if (count == 0) return null;
-
-      double avgCo2 = agg.path("sum_co2").asDouble() / count;
-      double avgT   = agg.path("sum_t").asDouble()   / count;
-      double avgH   = agg.path("sum_h").asDouble()   / count;
-      double avgP   = agg.path("sum_p").asDouble()   / count;
-      String loc    = agg.path("locationName").asText("");
-
+      
       ObjectNode out = MAPPER.createObjectNode();
-      out.put("devEui", devEui);
-      out.put("windowStart", start);
-      out.put("windowEnd", end);
-      out.put("locationName", loc);
-      out.put("avgCo2", avgCo2);
-      out.put("avgTemperature", avgT);
-      out.put("avgHumidity", avgH);
-      out.put("avgPressure", avgP);
+      out.put("sum_temperature", agg.path("sum_t").asDouble());
+      out.put("sum_humidity", agg.path("sum_h").asDouble());
+      out.put("sum_co2", agg.path("sum_co2").asDouble());
+      out.put("sum_pressure", agg.path("sum_p").asDouble());
       out.put("count", count);
+      out.put("locationName", agg.path("locationName").asText(""));
+      
       return out.toString();
     } catch (Exception e) {
       return null;
@@ -315,26 +308,20 @@ public class StreamsApp {
     }
   }
 
+  // MODIFICADO: Enviar sumas en lugar de promedios
   static String finalizeNoise(String devEui, long start, long end, String aggJson) {
     try {
       JsonNode agg = MAPPER.readTree(aggJson);
       long count = agg.path("count").asLong(0);
       if (count == 0) return null;
 
-      double avgLaeq  = agg.path("sum_laeq").asDouble()  / count;
-      double avgLai   = agg.path("sum_lai").asDouble()   / count;
-      double avgLaimax= agg.path("sum_laimax").asDouble()/ count;
-      String loc      = agg.path("locationName").asText("");
-
       ObjectNode out = MAPPER.createObjectNode();
-      out.put("devEui", devEui);
-      out.put("windowStart", start);
-      out.put("windowEnd", end);
-      out.put("locationName", loc);
-      out.put("avgLaeq", avgLaeq);
-      out.put("avgLai", avgLai);
-      out.put("avgLaimax", avgLaimax);
+      out.put("sum_laeq", agg.path("sum_laeq").asDouble());
+      out.put("sum_lai", agg.path("sum_lai").asDouble());
+      out.put("sum_laimax", agg.path("sum_laimax").asDouble());
       out.put("count", count);
+      out.put("locationName", agg.path("locationName").asText(""));
+      
       return out.toString();
     } catch (Exception e) {
       return null;
@@ -371,22 +358,18 @@ public class StreamsApp {
     }
   }
 
+  // MODIFICADO: Enviar sumas en lugar de promedios
   static String finalizeUnd(String devEui, long start, long end, String aggJson) {
     try {
       JsonNode agg = MAPPER.readTree(aggJson);
       long count = agg.path("count").asLong(0);
       if (count == 0) return null;
 
-      double avgDistance = agg.path("sum_distance").asDouble() / count;
-      String loc = agg.path("locationName").asText("");
-
       ObjectNode out = MAPPER.createObjectNode();
-      out.put("devEui", devEui);
-      out.put("windowStart", start);
-      out.put("windowEnd", end);
-      out.put("locationName", loc);
-      out.put("avgDistance", avgDistance);
+      out.put("sum_distance", agg.path("sum_distance").asDouble());
       out.put("count", count);
+      out.put("locationName", agg.path("locationName").asText(""));
+      
       return out.toString();
     } catch (Exception e) {
       return null;

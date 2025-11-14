@@ -4,8 +4,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.streams.*;
-// import org.apache.kafka.streams.test.TestInputTopic;
-// import org.apache.kafka.streams.test.TestOutputTopic;
 import org.apache.kafka.streams.TestInputTopic;
 import org.apache.kafka.streams.TestOutputTopic;
 
@@ -56,7 +54,11 @@ public class StreamsAppTest {
       long t40 = 40_000L;
       long t10 = 10_000L; // fuera de orden
 
-      // media esperada = (400 + 600 + 800 + 200) / 4 = 500
+      // Sumas esperadas:
+      // co2: 400 + 600 + 800 + 200 = 2000
+      // temperature: 20 + 22 + 24 + 18 = 84
+      // humidity: 50 + 55 + 60 + 45 = 210
+      // pressure: 900 + 910 + 920 + 890 = 3620
       airIn.pipeInput(devEui, buildAirRecord(devEui, location, 400, 20, 50, 900), t0);
       airIn.pipeInput(devEui, buildAirRecord(devEui, location, 600, 22, 55, 910), t20);
       airIn.pipeInput(devEui, buildAirRecord(devEui, location, 800, 24, 60, 920), t40);
@@ -70,13 +72,26 @@ public class StreamsAppTest {
 
       JsonNode json = MAPPER.readTree(last.value);
 
-      assertEquals(devEui, json.get("devEui").asText());
+      // Verificar el NUEVO formato con sumas
       assertEquals(4, json.get("count").asInt());
+      
+      // Verificar sumas en lugar de promedios
+      double sumCo2 = json.get("sum_co2").asDouble();
+      double expectedSumCo2 = 400 + 600 + 800 + 200; // = 2000
+      assertEquals(expectedSumCo2, sumCo2, 0.0001, "La suma de CO2 debe coincidir");
 
-      double avgCo2 = json.get("avgCo2").asDouble();
-      double expectedAvg = (400 + 600 + 800 + 200) / 4.0;
+      double sumTemperature = json.get("sum_temperature").asDouble();
+      double expectedSumTemp = 20 + 22 + 24 + 18; // = 84
+      assertEquals(expectedSumTemp, sumTemperature, 0.0001, "La suma de temperatura debe coincidir");
 
-      assertEquals(expectedAvg, avgCo2, 0.0001, "El promedio de CO2 debe coincidir");
+      double sumHumidity = json.get("sum_humidity").asDouble();
+      double expectedSumHumidity = 50 + 55 + 60 + 45; // = 210
+      assertEquals(expectedSumHumidity, sumHumidity, 0.0001, "La suma de humedad debe coincidir");
+
+      double sumPressure = json.get("sum_pressure").asDouble();
+      double expectedSumPressure = 900 + 910 + 920 + 890; // = 3620
+      assertEquals(expectedSumPressure, sumPressure, 0.0001, "La suma de presión debe coincidir");
+
       assertEquals(location, json.get("locationName").asText());
     }
   }
@@ -116,7 +131,10 @@ public class StreamsAppTest {
       long t40 = 40_000L;
       long t10 = 10_000L; // fuera de orden
 
-      // media esperada = (70 + 80 + 90 + 60) / 4 = 75
+      // Sumas esperadas:
+      // laeq: 70 + 80 + 90 + 60 = 300
+      // lai: 60 + 65 + 70 + 55 = 250
+      // laimax: 75 + 85 + 95 + 65 = 320
       noiseIn.pipeInput(devEui, buildNoiseRecord(devEui, location, 70,  60, 75), t0);
       noiseIn.pipeInput(devEui, buildNoiseRecord(devEui, location, 80,  65, 85), t20);
       noiseIn.pipeInput(devEui, buildNoiseRecord(devEui, location, 90,  70, 95), t40);
@@ -130,13 +148,21 @@ public class StreamsAppTest {
 
       JsonNode json = MAPPER.readTree(last.value);
 
-      assertEquals(devEui, json.get("devEui").asText());
       assertEquals(4, json.get("count").asInt());
 
-      double avgLaeq = json.get("avgLaeq").asDouble();
-      double expectedAvg = (70 + 80 + 90 + 60) / 4.0;
+      // Verificar el NUEVO formato con sumas
+      double sumLaeq = json.get("sum_laeq").asDouble();
+      double expectedSumLaeq = 70 + 80 + 90 + 60; // = 300
+      assertEquals(expectedSumLaeq, sumLaeq, 0.0001, "La suma de LAeq debe coincidir");
 
-      assertEquals(expectedAvg, avgLaeq, 0.0001, "El promedio de LAeq debe coincidir");
+      double sumLai = json.get("sum_lai").asDouble();
+      double expectedSumLai = 60 + 65 + 70 + 55; // = 250
+      assertEquals(expectedSumLai, sumLai, 0.0001, "La suma de LAI debe coincidir");
+
+      double sumLaimax = json.get("sum_laimax").asDouble();
+      double expectedSumLaimax = 75 + 85 + 95 + 65; // = 320
+      assertEquals(expectedSumLaimax, sumLaimax, 0.0001, "La suma de LAImax debe coincidir");
+
       assertEquals(location, json.get("locationName").asText());
     }
   }
@@ -176,7 +202,7 @@ public class StreamsAppTest {
       long t40 = 40_000L;
       long t10 = 10_000L; // fuera de orden
 
-      // media esperada = (10 + 20 + 30 + 40) / 4 = 25
+      // Suma esperada: 10 + 20 + 30 + 40 = 100
       undIn.pipeInput(devEui, buildUndRecord(devEui, location, 10), t0);
       undIn.pipeInput(devEui, buildUndRecord(devEui, location, 20), t20);
       undIn.pipeInput(devEui, buildUndRecord(devEui, location, 30), t40);
@@ -190,13 +216,13 @@ public class StreamsAppTest {
 
       JsonNode json = MAPPER.readTree(last.value);
 
-      assertEquals(devEui, json.get("devEui").asText());
       assertEquals(4, json.get("count").asInt());
 
-      double avgDistance = json.get("avgDistance").asDouble();
-      double expectedAvg = (10 + 20 + 30 + 40) / 4.0;
+      // Verificar el NUEVO formato con sumas
+      double sumDistance = json.get("sum_distance").asDouble();
+      double expectedSumDistance = 10 + 20 + 30 + 40; // = 100
+      assertEquals(expectedSumDistance, sumDistance, 0.0001, "La suma de distancia debe coincidir");
 
-      assertEquals(expectedAvg, avgDistance, 0.0001, "El promedio de distancia debe coincidir");
       assertEquals(location, json.get("locationName").asText());
     }
   }
