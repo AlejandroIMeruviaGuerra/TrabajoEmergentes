@@ -1,4 +1,4 @@
-# ============================================
+﻿# ============================================
 # Script de Prueba Rápida - Todos los Servicios
 # ============================================
 
@@ -88,8 +88,8 @@ if (-not $SkipKafka) {
     Write-Host "📦 Paso 1: Kafka + Zookeeper" -ForegroundColor Cyan
     Write-Host "─" * 60
     
-    $projectRoot = Split-Path -Parent $PSScriptRoot
-    Set-Location $projectRoot
+    # La raíz del proyecto es donde se encuentra este script
+    $projectRoot = $PSScriptRoot
     
     # Verificar si ya está corriendo
     $kafkaRunning = docker ps --filter "name=kafka" --format "{{.Names}}" | Select-String "kafka"
@@ -98,6 +98,7 @@ if (-not $SkipKafka) {
         Write-Host "   ℹ️  Kafka ya está corriendo" -ForegroundColor Cyan
     } else {
         Write-Host "   🚀 Iniciando Kafka + Zookeeper..." -ForegroundColor Yellow
+        Set-Location $projectRoot # Asegurarse de estar en la raíz para docker-compose
         docker compose up -d 2>&1 | Out-Null
         
         if ($LASTEXITCODE -eq 0) {
@@ -205,9 +206,44 @@ if (-not $SkipBackend) {
 }
 
 # ────────────────────────────────────────────
-# Paso 3: Probar Endpoints
+# Paso 3: Frontend
 # ────────────────────────────────────────────
-Write-Host "🧪 Paso 3: Probar Health Endpoints" -ForegroundColor Cyan
+Write-Host "🎨 Paso 3: Frontend (Vite)" -ForegroundColor Cyan
+Write-Host "─" * 60
+
+Set-Location "$projectRoot\FrontEnd\Emergentes"
+
+# Instalar dependencias si no existen
+if (!(Test-Path "node_modules")) {
+    Write-Host "   📦 Instalando dependencias npm del frontend..." -ForegroundColor Yellow
+    npm install 2>&1 | Out-Null
+    if ($LASTEXITCODE -eq 0) {
+        Write-Host "   ✅ Dependencias instaladas" -ForegroundColor Green
+    } else {
+        Write-Host "   ❌ Error al instalar dependencias del frontend" -ForegroundColor Red
+        exit 1
+    }
+} else {
+    Write-Host "   ✅ Dependencias del frontend ya instaladas" -ForegroundColor Green
+}
+
+# Instalar jwt-decode si no existe
+if (-not (Get-Content package.json | Select-String '"jwt-decode"')) {
+    Write-Host "   📦 Instalando jwt-decode..." -ForegroundColor Yellow
+    npm install jwt-decode 2>&1 | Out-Null
+}
+
+# Iniciar frontend en nuevo proceso
+Write-Host "   🚀 Iniciando Frontend en puerto 5173..." -ForegroundColor Yellow
+$frontendProcess = Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$PWD'; npm run dev" -PassThru -WindowStyle Normal
+
+Write-Host "   ✅ Frontend iniciado (PID: $($frontendProcess.Id))" -ForegroundColor Green
+Write-Host ""
+
+# ────────────────────────────────────────────
+# Paso 4: Probar Endpoints
+# ────────────────────────────────────────────
+Write-Host "🧪 Paso 4: Probar Health Endpoints" -ForegroundColor Cyan
 Write-Host "─" * 60
 
 $baseUrl = "http://localhost:4000"
@@ -242,9 +278,9 @@ foreach ($endpoint in $endpoints.Keys) {
 }
 
 # ────────────────────────────────────────────
-# Paso 4: Mostrar Métricas Iniciales
+# Paso 5: Mostrar Métricas Iniciales
 # ────────────────────────────────────────────
-Write-Host "📊 Paso 4: Métricas del Consumer (Inicial)" -ForegroundColor Cyan
+Write-Host "📊 Paso 5: Métricas del Consumer (Inicial)" -ForegroundColor Cyan
 Write-Host "─" * 60
 
 try {
@@ -272,10 +308,10 @@ try {
 Write-Host ""
 
 # ────────────────────────────────────────────
-# Paso 5: Preguntar por Streamer
+# Paso 6: Preguntar por Streamer
 # ────────────────────────────────────────────
 if (-not $SkipStreamer) {
-    Write-Host "🚀 Paso 5: Streamer Java (Producer)" -ForegroundColor Cyan
+    Write-Host "🚀 Paso 6: Streamer Java (Producer)" -ForegroundColor Cyan
     Write-Host "─" * 60
     
     Write-Host "   El streamer-java genera mensajes de sensores para Kafka" -ForegroundColor White

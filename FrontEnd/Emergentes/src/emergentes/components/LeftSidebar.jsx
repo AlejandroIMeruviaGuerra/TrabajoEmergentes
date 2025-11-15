@@ -5,14 +5,19 @@ import { useAuth } from "../context/useAuth.jsx";
 export default function LeftSidebar({ open, setOpen }) {
   const nav = useNavigate();
   const loc = useLocation();
-  const { logout } = useAuth();
+  const { user, logout } = useAuth();
 
   const items = useMemo(
-    () => [
-      { to: "/", label: "Dashboard", icon: "📊" },
-      { to: "/upload", label: "Subir CSV", icon: "📤" },
-    ],
-    []
+    () => {
+      const allItems = [
+        { to: "/", label: "Dashboard", icon: "📊", roles: ["Ejecutivo", "Operativo"] },
+        { to: "/upload", label: "Subir CSV", icon: "📤", roles: ["Ejecutivo"] },
+      ];
+      // Si no hay usuario, no mostrar nada. Si hay, filtrar por su rol.
+      if (!user) return [];
+      return allItems.filter(item => item.roles.includes(user.rol));
+    },
+    [user]
   );
 
   const width = open ? 220 : 72;
@@ -83,6 +88,22 @@ export default function LeftSidebar({ open, setOpen }) {
 
       {/* spacer */}
       <div style={{ flex: 1 }} />
+
+      {/* user role */}
+      {user && (
+        <div style={{ padding: "8px 12px", borderTop: "1px solid #374151", margin: "8px 0" }}>
+          {open ? (
+            <div style={{ fontWeight: 600, color: "#fff", textTransform: 'capitalize' }}>
+              {user.rol}
+            </div>
+          ) : (
+            <div title={user.rol} style={{ width: 36, height: 36, borderRadius: '50%', background: '#374151', display: 'grid', placeItems: 'center', fontWeight: 600, color: '#fff' }}>
+              {/* Muestra la inicial del rol */}
+              {user.rol?.[0].toUpperCase()}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* logout */}
       <div style={{ padding: 8 }}>

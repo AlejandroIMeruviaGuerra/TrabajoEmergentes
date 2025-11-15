@@ -5,14 +5,21 @@ import { useAuth } from "../context/useAuth.jsx";
 export default function CornerMenu() {
   const [open, setOpen] = useState(false);
   const nav = useNavigate();
-  const { logout } = useAuth();
+  const { user, logout } = useAuth();
 
   return (
     <div style={styles.wrapper}>
       {open && (
         <div style={styles.panel}>
+          {user && (
+            <div style={{ padding: "4px 10px 10px", borderBottom: "1px solid #eee", fontWeight: 600, color: "#6b7280", textTransform: 'capitalize' }}>
+              Rol: {user.rol}
+            </div>
+          )}
           <button style={styles.item} onClick={() => nav("/")}>📊 Dashboard</button>
-          <button style={styles.item} onClick={() => nav("/upload")}>📤 Subir CSV</button>
+          {user?.rol === 'Ejecutivo' && (
+            <button style={styles.item} onClick={() => nav("/upload")}>📤 Subir CSV</button>
+          )}
           <hr style={styles.hr}/>
           <button style={{ ...styles.item, color: "#ef4444" }} onClick={logout}>⏻ Cerrar sesión</button>
         </div>
