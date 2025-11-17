@@ -1,0 +1,13 @@
+D:\Emergentes\Tarea3\TrabajoEmergentes\ingestor-java\src\main\java\bo\univalle\gamc\ingestor\core\Config.java
+D:\Emergentes\Tarea3\TrabajoEmergentes\ingestor-java\src\main\java\bo\univalle\gamc\ingestor\core\CsvIngestor.java
+D:\Emergentes\Tarea3\TrabajoEmergentes\ingestor-java\src\main\java\bo\univalle\gamc\ingestor\core\CsvIter.java
+D:\Emergentes\Tarea3\TrabajoEmergentes\ingestor-java\src\main\java\bo\univalle\gamc\ingestor\core\Jsons.java
+D:\Emergentes\Tarea3\TrabajoEmergentes\ingestor-java\src\main\java\bo\univalle\gamc\ingestor\core\Observer.java
+D:\Emergentes\Tarea3\TrabajoEmergentes\ingestor-java\src\main\java\bo\univalle\gamc\ingestor\core\SensorRecord.java
+D:\Emergentes\Tarea3\TrabajoEmergentes\ingestor-java\src\main\java\bo\univalle\gamc\ingestor\core\Subject.java
+D:\Emergentes\Tarea3\TrabajoEmergentes\ingestor-java\src\main\java\bo\univalle\gamc\ingestor\Main.java
+D:\Emergentes\Tarea3\TrabajoEmergentes\ingestor-java\src\main\java\bo\univalle\gamc\ingestor\normalize\AirNormalizer.java
+D:\Emergentes\Tarea3\TrabajoEmergentes\ingestor-java\src\main\java\bo\univalle\gamc\ingestor\normalize\KafkaPublisherObserver.java
+D:\Emergentes\Tarea3\TrabajoEmergentes\ingestor-java\src\main\java\bo\univalle\gamc\ingestor\normalize\NoiseNormalizer.java
+D:\Emergentes\Tarea3\TrabajoEmergentes\ingestor-java\src\main\java\bo\univalle\gamc\ingestor\normalize\Normalizer.java
+D:\Emergentes\Tarea3\TrabajoEmergentes\ingestor-java\src\main\java\bo\univalle\gamc\ingestor\normalize\UndergroundNormalizer.java
