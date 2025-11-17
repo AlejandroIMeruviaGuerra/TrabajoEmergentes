@@ -62,8 +62,52 @@ export async function uploadCsvBulk(files, type) {
 }
 
 // ================== NUEVO: UPLOAD POR CHUNKS ==================
+// ================== NUEVO: UPLOAD POR CHUNKS ==================
 
 // 1) init
+export async function uploadInit({ filename, size, type }) {
+  const { data } = await api.post("/uploads/init", {
+    filename,
+    size,
+    type,
+  });
+
+  // Backend devuelve { ok, id, chunkSize, parts }
+  return {
+    ok: data.ok,
+    uploadId: data.id,             // 👈 mapeado correctamente
+    chunkSize: data.chunkSize,
+    totalChunks: data.parts,       // 👈 mapeado correctamente
+  };
+}
+
+// 2) subir chunk (PUT /uploads/chunk/:id/:part)
+export async function uploadChunk({ uploadId, chunkIndex, blob }) {
+  const url = `${API}/api/uploads/chunk/${uploadId}/${chunkIndex}`;
+
+  const res = await fetch(url, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/octet-stream",
+    },
+    body: blob,
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.msg || "Error al enviar chunk");
+  }
+
+  return await res.json();
+}
+
+// 3) complete (POST /uploads/complete/:id)
+export async function uploadComplete({ uploadId }) {
+  const { data } = await api.post(`/uploads/complete/${uploadId}`);
+  return data;
+}
+
+/*// 1) init
 export async function uploadInit({ filename, size, type }) {
   const { data } = await api.post("/uploads/init", {
     filename,
@@ -90,4 +134,4 @@ export async function uploadChunk({ uploadId, chunkIndex, totalChunks, blob }) {
 export async function uploadComplete({ uploadId }) {
   const { data } = await api.post("/uploads/complete", { uploadId });
   return data; // { ok, message, summary? }
-}
+}*/

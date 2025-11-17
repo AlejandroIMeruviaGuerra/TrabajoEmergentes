@@ -8,58 +8,60 @@ import Joi from "joi";
 export const airCrudeSchema = Joi.object({
   devEui: Joi.string()
     .pattern(/^eui-[0-9A-F]{16}$/i)
-    .required()
+    .optional()
+    .allow(null, "")
     .messages({
-      "string.pattern.base": "devEui debe tener formato 'eui-' seguido de 16 caracteres hexadecimales",
-      "any.required": "devEui es requerido"
+      "string.pattern.base": "devEui debe tener formato 'eui-' seguido de 16 caracteres hexadecimales"
     }),
   
-  time: Joi.date()
-    .iso()
-    .required()
+  time: Joi.alternatives().try(
+    Joi.date().iso(),
+    Joi.string()
+  )
+    .optional()
+    .allow(null, "")
     .messages({
-      "date.format": "time debe ser una fecha ISO válida",
-      "any.required": "time es requerido"
+      "date.format": "time debe ser una fecha ISO válida"
     }),
   
   temperature: Joi.number()
     .min(-50)
     .max(100)
-    .required()
+    .optional()
+    .allow(null, "")
     .messages({
       "number.min": "temperature debe estar entre -50 y 100°C",
-      "number.max": "temperature debe estar entre -50 y 100°C",
-      "any.required": "temperature es requerido"
+      "number.max": "temperature debe estar entre -50 y 100°C"
     }),
   
   humidity: Joi.number()
     .min(0)
     .max(100)
-    .required()
+    .optional()
+    .allow(null, "")
     .messages({
       "number.min": "humidity debe estar entre 0 y 100%",
-      "number.max": "humidity debe estar entre 0 y 100%",
-      "any.required": "humidity es requerido"
+      "number.max": "humidity debe estar entre 0 y 100%"
     }),
   
   co2: Joi.number()
     .min(0)
     .max(10000)
-    .required()
+    .optional()
+    .allow(null, "")
     .messages({
       "number.min": "co2 debe ser >= 0 ppm",
-      "number.max": "co2 debe ser <= 10000 ppm",
-      "any.required": "co2 es requerido"
+      "number.max": "co2 debe ser <= 10000 ppm"
     }),
   
   voc: Joi.number()
     .min(0)
     .max(5000)
-    .required()
+    .optional()
+    .allow(null, "")
     .messages({
       "number.min": "voc debe ser >= 0 ppb",
-      "number.max": "voc debe ser <= 5000 ppb",
-      "any.required": "voc es requerido"
+      "number.max": "voc debe ser <= 5000 ppb"
     }),
 
   locationName: Joi.string()
@@ -75,48 +77,50 @@ export const airCrudeSchema = Joi.object({
 export const noiseCrudeSchema = Joi.object({
   devEui: Joi.string()
     .pattern(/^eui-[0-9A-F]{16}$/i)
-    .required()
+    .optional()
+    .allow(null, "")
     .messages({
-      "string.pattern.base": "devEui debe tener formato 'eui-' seguido de 16 caracteres hexadecimales",
-      "any.required": "devEui es requerido"
+      "string.pattern.base": "devEui debe tener formato 'eui-' seguido de 16 caracteres hexadecimales"
     }),
   
-  time: Joi.date()
-    .iso()
-    .required()
+  time: Joi.alternatives().try(
+    Joi.date().iso(),
+    Joi.string()
+  )
+    .optional()
+    .allow(null, "")
     .messages({
-      "date.format": "time debe ser una fecha ISO válida",
-      "any.required": "time es requerido"
+      "date.format": "time debe ser una fecha ISO válida"
     }),
   
   laeq: Joi.number()
     .min(0)
     .max(140)
-    .required()
+    .optional()
+    .allow(null, "")
     .messages({
       "number.min": "laeq debe estar entre 0 y 140 dB",
-      "number.max": "laeq debe estar entre 0 y 140 dB",
-      "any.required": "laeq es requerido"
+      "number.max": "laeq debe estar entre 0 y 140 dB"
     }),
   
   lai: Joi.number()
     .min(0)
     .max(140)
-    .required()
+    .optional()
+    .allow(null, "")
     .messages({
       "number.min": "lai debe estar entre 0 y 140 dB",
-      "number.max": "lai debe estar entre 0 y 140 dB",
-      "any.required": "lai es requerido"
+      "number.max": "lai debe estar entre 0 y 140 dB"
     }),
   
   laimax: Joi.number()
     .min(0)
     .max(140)
-    .required()
+    .optional()
+    .allow(null, "")
     .messages({
       "number.min": "laimax debe estar entre 0 y 140 dB",
-      "number.max": "laimax debe estar entre 0 y 140 dB",
-      "any.required": "laimax es requerido"
+      "number.max": "laimax debe estar entre 0 y 140 dB"
     }),
 
   locationName: Joi.string()
@@ -132,28 +136,30 @@ export const noiseCrudeSchema = Joi.object({
 export const undergroundCrudeSchema = Joi.object({
   devEui: Joi.string()
     .pattern(/^eui-[0-9A-F]{16}$/i)
-    .required()
+    .optional()
+    .allow(null, "")
     .messages({
-      "string.pattern.base": "devEui debe tener formato 'eui-' seguido de 16 caracteres hexadecimales",
-      "any.required": "devEui es requerido"
+      "string.pattern.base": "devEui debe tener formato 'eui-' seguido de 16 caracteres hexadecimales"
     }),
   
-  time: Joi.date()
-    .iso()
-    .required()
+  time: Joi.alternatives().try(
+    Joi.date().iso(),
+    Joi.string()
+  )
+    .optional()
+    .allow(null, "")
     .messages({
-      "date.format": "time debe ser una fecha ISO válida",
-      "any.required": "time es requerido"
+      "date.format": "time debe ser una fecha ISO válida"
     }),
   
   distance: Joi.number()
     .min(0)
     .max(1000)
-    .required()
+    .optional()
+    .allow(null, "")
     .messages({
       "number.min": "distance debe ser >= 0 cm",
-      "number.max": "distance debe ser <= 1000 cm",
-      "any.required": "distance es requerido"
+      "number.max": "distance debe ser <= 1000 cm"
     }),
 
   locationName: Joi.string()
@@ -269,6 +275,46 @@ export const undergroundAggregatedSchema = Joi.object({
     .optional()
     .allow(null, "")
 });
+
+/**
+ * Función para verificar si un registro tiene datos significativos (no está completamente vacío)
+ * @param {Object} data - Datos a validar
+ * @param {string} type - Tipo de sensor (air, noise, underground)
+ * @returns {boolean} true si tiene al menos un campo con datos
+ */
+export function hasSignificantData(data, type) {
+  if (!data || typeof data !== 'object') return false;
+
+  if (type === 'air') {
+    // Para aire: al menos uno de estos debe tener valor (incluyendo 0 para números)
+    return !!(
+      (data.devEui && data.devEui.toString().trim()) ||
+      (data.temperature !== null && data.temperature !== undefined && data.temperature !== '') ||
+      (data.humidity !== null && data.humidity !== undefined && data.humidity !== '') ||
+      (data.co2 !== null && data.co2 !== undefined && data.co2 !== '') ||
+      (data.voc !== null && data.voc !== undefined && data.voc !== '') ||
+      (data.time && data.time.toString && data.time.toString().trim())
+    );
+  } else if (type === 'noise') {
+    // Para ruido: al menos uno de estos debe tener valor (incluyendo 0 para números)
+    return !!(
+      (data.devEui && data.devEui.toString().trim()) ||
+      (data.laeq !== null && data.laeq !== undefined && data.laeq !== '') ||
+      (data.lai !== null && data.lai !== undefined && data.lai !== '') ||
+      (data.laimax !== null && data.laimax !== undefined && data.laimax !== '') ||
+      (data.time && data.time.toString && data.time.toString().trim())
+    );
+  } else if (type === 'underground') {
+    // Para subterráneo: al menos uno de estos debe tener valor (incluyendo 0 para números)
+    return !!(
+      (data.devEui && data.devEui.toString().trim()) ||
+      (data.distance !== null && data.distance !== undefined && data.distance !== '') ||
+      (data.time && data.time.toString && data.time.toString().trim())
+    );
+  }
+
+  return false;
+}
 
 /**
  * Función helper para validar datos con un schema de Joi

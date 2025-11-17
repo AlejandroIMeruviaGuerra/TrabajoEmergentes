@@ -9,25 +9,31 @@ import path from "path";
  */
 export function triggerIngestor(sensorType, filePath) {
   return new Promise((resolve, reject) => {
+
+    // 🔥 RUTA CORRECTA DEL JAR (según tu nueva carpeta)
     const JAR_PATH =
       process.env.INGEST_JAR_PATH ||
-      path.resolve("../ingestor-java/target/ingestor-java-1.0.0-jar-with-dependencies.jar");
+      "D:/lunes/TrabajoEmergentes/ingestor-java/target/ingestor-1.0.0-jar-with-dependencies.jar";
 
+    // Ejecutable Java
     const JAVA_PATH = process.env.JAVA_PATH || "java";
+
+    // Brokers Kafka (backend ya lo tenía)
     const brokers = process.env.KAFKA_BROKERS || "localhost:9092";
 
-    // Determina variable ENV según tipo
+    // Variable de entorno según tipo
     const envVarMap = {
       air: "CSV_AIR",
       noise: "CSV_NOISE",
       underground: "CSV_UND",
     };
+
     const csvEnvKey = envVarMap[sensorType];
     if (!csvEnvKey) {
       return reject(new Error(`Tipo inválido: ${sensorType}`));
     }
 
-    // 🔧 construimos variables de entorno
+    // Construir variables env que se pasan al proceso Java
     const env = {
       ...process.env,
       KAFKA_BROKERS: brokers,
@@ -37,11 +43,12 @@ export function triggerIngestor(sensorType, filePath) {
     console.log(`🚀 [Ingestor] Ejecutando Java para ${sensorType}`);
     console.log(`   Archivo: ${filePath}`);
     console.log(`   Brokers: ${brokers}`);
+    console.log(`   Jar: ${JAR_PATH}`);
 
     // Ejecutar proceso Java
     const proc = spawn(JAVA_PATH, ["-jar", JAR_PATH], {
       env,
-      stdio: "inherit", // muestra salida en consola del backend
+      stdio: "inherit", // Muestra salida en consola del backend
     });
 
     proc.on("error", (err) => {
