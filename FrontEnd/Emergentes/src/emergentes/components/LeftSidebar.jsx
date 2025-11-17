@@ -11,11 +11,11 @@ export default function LeftSidebar({ open, setOpen }) {
     () => {
       const allItems = [
         { to: "/", label: "Dashboard", icon: "📊", roles: ["Ejecutivo", "Operativo"] },
+        { to: "/historico", label: "Histórico", icon: "📈", roles: ["Ejecutivo", "Operativo"] },
         { to: "/upload", label: "Subir CSV", icon: "📤", roles: ["Ejecutivo"] },
       ];
-      // Si no hay usuario, no mostrar nada. Si hay, filtrar por su rol.
       if (!user) return [];
-      return allItems.filter(item => item.roles.includes(user.rol));
+      return allItems.filter((item) => item.roles.includes(user.rol));
     },
     [user]
   );
@@ -38,8 +38,14 @@ export default function LeftSidebar({ open, setOpen }) {
       <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 12px" }}>
         <div
           style={{
-            width: 36, height: 36, borderRadius: 8, background: "#1f2937",
-            display: "grid", placeItems: "center", fontWeight: 700, color: "#fff",
+            width: 36,
+            height: 36,
+            borderRadius: 8,
+            background: "#1f2937",
+            display: "grid",
+            placeItems: "center",
+            fontWeight: 700,
+            color: "#fff",
           }}
         >
           G
@@ -49,8 +55,14 @@ export default function LeftSidebar({ open, setOpen }) {
           onClick={() => setOpen(!open)}
           title={open ? "Contraer" : "Expandir"}
           style={{
-            marginLeft: "auto", background: "transparent", border: "1px solid #334155",
-            color: "#E5E7EB", borderRadius: 8, width: 32, height: 32, cursor: "pointer",
+            marginLeft: "auto",
+            background: "transparent",
+            border: "1px solid #334155",
+            color: "#E5E7EB",
+            borderRadius: 8,
+            width: 32,
+            height: 32,
+            cursor: "pointer",
           }}
         >
           {open ? "«" : "»"}
@@ -86,19 +98,29 @@ export default function LeftSidebar({ open, setOpen }) {
         })}
       </nav>
 
-      {/* spacer */}
       <div style={{ flex: 1 }} />
 
       {/* user role */}
       {user && (
         <div style={{ padding: "8px 12px", borderTop: "1px solid #374151", margin: "8px 0" }}>
           {open ? (
-            <div style={{ fontWeight: 600, color: "#fff", textTransform: 'capitalize' }}>
+            <div style={{ fontWeight: 600, color: "#fff", textTransform: "capitalize" }}>
               {user.rol}
             </div>
           ) : (
-            <div title={user.rol} style={{ width: 36, height: 36, borderRadius: '50%', background: '#374151', display: 'grid', placeItems: 'center', fontWeight: 600, color: '#fff' }}>
-              {/* Muestra la inicial del rol */}
+            <div
+              title={user.rol}
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: "50%",
+                background: "#374151",
+                display: "grid",
+                placeItems: "center",
+                fontWeight: 600,
+                color: "#fff",
+              }}
+            >
               {user.rol?.[0].toUpperCase()}
             </div>
           )}

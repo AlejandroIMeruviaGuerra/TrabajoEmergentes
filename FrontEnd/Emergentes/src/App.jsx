@@ -1,35 +1,64 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+// src/App.jsx
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import AuthProvider from "./emergentes/context/AuthProvider";
+import AppShell from "./emergentes/components/AppShell";
+
+import Login from "./emergentes/components/Login";
+import Dashboard from "./emergentes/components/Dashboard";
+import UploadCsv from "./emergentes/components/UploadCsv";
+import Historico from "./emergentes/components/Historico";
+import PrivateRoute from "./emergentes/context/PrivateRoute";
 
 function App() {
-  const [count, setCount] = useState(0)
-
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.jsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+    <AuthProvider>
+      <BrowserRouter>
+        <Routes>
+          {/* Login público */}
+          <Route path="/login" element={<Login />} />
+
+          {/* Dashboard tiempo real */}
+          <Route
+            path="/"
+            element={
+              <PrivateRoute>
+                <AppShell>
+                  <Dashboard />
+                </AppShell>
+              </PrivateRoute>
+            }
+          />
+
+          {/* Histórico */}
+          <Route
+            path="/historico"
+            element={
+              <PrivateRoute>
+                <AppShell>
+                  <Historico />
+                </AppShell>
+              </PrivateRoute>
+            }
+          />
+
+          {/* Upload por chunks */}
+          <Route
+            path="/upload"
+            element={
+              <PrivateRoute>
+                <AppShell>
+                  <UploadCsv />
+                </AppShell>
+              </PrivateRoute>
+            }
+          />
+
+          {/* Cualquier otra ruta → Dashboard */}
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </BrowserRouter>
+    </AuthProvider>
+  );
 }
 
-export default App
+export default App;
