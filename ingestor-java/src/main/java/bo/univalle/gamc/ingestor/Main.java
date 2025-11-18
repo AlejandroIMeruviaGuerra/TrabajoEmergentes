@@ -61,6 +61,13 @@ public class Main {
       undIngestor.run();
     }
 
+    // ⏳ Flush explícito ANTES de cerrar para asegurar que todos los mensajes se envíen
+    kafkaObs.flush();
+    System.out.println("✅ Mensajes enviados a Kafka");
+    
+    // Pequeño delay para garantizar que Kafka procesa
+    Thread.sleep(500);
+    
     kafkaObs.close();
     System.out.println("✅ Ingesta finalizada");
   }

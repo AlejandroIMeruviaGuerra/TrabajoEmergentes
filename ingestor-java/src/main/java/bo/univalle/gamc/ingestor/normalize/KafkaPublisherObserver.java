@@ -53,13 +53,15 @@ public class KafkaPublisherObserver implements Observer {
       final String value = mapper.writeValueAsString(record);
       producer.send(new ProducerRecord<>(topic, key, value), (md, ex) -> {
         if (ex != null) {
-          ex.printStackTrace(); // aquí podrías contar errores si quieres métricas
+          System.err.println("❌ Error al enviar a Kafka: " + ex.getMessage());
+          ex.printStackTrace();
         }
       });
 
       if (++count % flushEvery == 0) producer.flush();
 
     } catch (Exception e) {
+      System.err.println("❌ Excepción en observer.update():");
       e.printStackTrace();
     }
   }

@@ -199,8 +199,12 @@ async function flushType(type) {
     });
 
     await pool.query(sqlMap[type], [values]);
+    console.log(`✅ MySQL bulk ${type}: ${values.length} registros insertados`);
   } catch (e) {
     console.error(`❌ MySQL bulk ${type}:`, e.message);
+    if (e.code === 'PROTOCOL_CONNECTION_LOST' || e.code === 'PROTOCOL_ENQUEUE_AFTER_FATAL_ERROR') {
+      console.error("⚠️ Conexión MySQL perdida - se reintentará en próximo flush");
+    }
   }
 }
 

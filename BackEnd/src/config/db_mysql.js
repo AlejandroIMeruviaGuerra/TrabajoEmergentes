@@ -6,6 +6,27 @@ export let pool = null;
 
 export async function connectMySQL() {
   try {
+    // Primero conectar SIN especificar base de datos para crear la BD
+    const tempPool = await mysql.createPool({
+      host: process.env.DB_HOST,
+      port: process.env.DB_PORT,
+      user: process.env.DB_USER,
+      password: process.env.DB_PASS,
+      waitForConnections: true,
+      connectionLimit: 2,
+      multipleStatements: true,
+    });
+
+    const conn = await tempPool.getConnection();
+    
+    // Crear base de datos si no existe
+    await conn.query(`CREATE DATABASE IF NOT EXISTS ${process.env.DB_NAME}`);
+    console.log(`✅ Base de datos '${process.env.DB_NAME}' verificada/creada`);
+    
+    conn.release();
+    await tempPool.end();
+
+    // Ahora conectar con la base de datos
     pool = await mysql.createPool({
       host: process.env.DB_HOST,
       port: process.env.DB_PORT,

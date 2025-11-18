@@ -24,8 +24,11 @@ public class AirNormalizer implements Normalizer {
     s.time = m.getOrDefault("time", m.getOrDefault("Time", ""));
 
     // ---- Device info ----
+    String devEuiStr = m.get("deviceInfo.devEui");
+    if (devEuiStr == null) devEuiStr = m.get("devEui");
+    
     Map<String,Object> device = new HashMap<>();
-    device.put("devEui",       m.get("deviceInfo.devEui"));
+    device.put("devEui",       devEuiStr);
     device.put("name",         m.get("deviceInfo.deviceName"));
     device.put("profile",      m.get("deviceInfo.deviceProfileName"));
     device.put("tenant",       m.get("deviceInfo.tenantName"));
@@ -53,10 +56,20 @@ public class AirNormalizer implements Normalizer {
 
     // ---- Measures ----
     Map<String,Object> measures = new HashMap<>();
-    measures.put("co2",          toD(m.get("object.co2")));
-    measures.put("temperature",  toD(m.get("object.temperature")));
-    measures.put("humidity",     toD(m.get("object.humidity")));
-    measures.put("pressure",     toD(m.get("object.pressure")));
+    // Busca en "object.co2" primero (formato importado), luego en "co2" (formato CSV simple)
+    String co2Str = m.get("object.co2");
+    if (co2Str == null) co2Str = m.get("co2");
+    String tempStr = m.get("object.temperature");
+    if (tempStr == null) tempStr = m.get("temperature");
+    String humStr = m.get("object.humidity");
+    if (humStr == null) humStr = m.get("humidity");
+    String presStr = m.get("object.pressure");
+    if (presStr == null) presStr = m.get("pressure");
+    
+    measures.put("co2",          toD(co2Str));
+    measures.put("temperature",  toD(tempStr));
+    measures.put("humidity",     toD(humStr));
+    measures.put("pressure",     toD(presStr));
     s.measures = measures;
 
     // ---- Labels (solo aire) ----

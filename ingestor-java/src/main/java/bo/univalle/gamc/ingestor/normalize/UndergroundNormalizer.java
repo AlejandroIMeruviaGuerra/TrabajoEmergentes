@@ -14,7 +14,9 @@ public class UndergroundNormalizer implements Normalizer {
     s.time = m.getOrDefault("time", m.getOrDefault("Time",""));
 
     Map<String,Object> device = new HashMap<>();
-    device.put("devEui", m.get("deviceInfo.devEui"));
+    String devEuiStr = m.get("deviceInfo.devEui");
+    if (devEuiStr == null) devEuiStr = m.get("devEui");
+    device.put("devEui", devEuiStr);
     device.put("name", m.get("deviceInfo.deviceName"));
     device.put("profile", m.get("deviceInfo.deviceProfileName"));
     s.device = device;
@@ -36,12 +38,21 @@ public class UndergroundNormalizer implements Normalizer {
     s.radio = radio;
 
     Map<String,Object> measures = new HashMap<>();
-    measures.put("distance", toD(m.get("object.distance")));
-    measures.put("unit", m.getOrDefault("Unidad", "cm"));
+    String distanceStr = m.get("object.distance");
+    if (distanceStr == null) distanceStr = m.get("distance");
+    String unitStr = m.getOrDefault("Unidad", m.getOrDefault("unit", "cm"));
+    
+    measures.put("distance", toD(distanceStr));
+    measures.put("unit", unitStr);
     s.measures = measures;
 
-    s.device.put("battery", toD(m.get("object.battery")));
-    s.device.put("status", m.get("object.status"));
+    String batteryStr = m.get("object.battery");
+    if (batteryStr == null) batteryStr = m.get("battery");
+    String statusStr = m.get("object.status");
+    if (statusStr == null) statusStr = m.get("status");
+    
+    s.device.put("battery", toD(batteryStr));
+    s.device.put("status", statusStr);
     return s;
   }
 }

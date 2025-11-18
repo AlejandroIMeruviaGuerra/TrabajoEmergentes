@@ -14,7 +14,9 @@ public class NoiseNormalizer implements Normalizer {
     s.time = m.getOrDefault("time", m.getOrDefault("Time",""));
 
     Map<String,Object> device = new HashMap<>();
-    device.put("devEui", m.get("deviceInfo.devEui"));
+    String devEuiStr = m.get("deviceInfo.devEui");
+    if (devEuiStr == null) devEuiStr = m.get("devEui");
+    device.put("devEui", devEuiStr);
     device.put("name", m.get("deviceInfo.deviceName"));
     device.put("profile", m.get("deviceInfo.deviceProfileName"));
     s.device = device;
@@ -36,14 +38,26 @@ public class NoiseNormalizer implements Normalizer {
     s.radio = radio;
 
     Map<String,Object> measures = new HashMap<>();
-    measures.put("laeq", toD(m.get("object.LAeq")));
-    measures.put("lai", toD(m.get("object.LAI")));
-    measures.put("laimax", toD(m.get("object.LAImax")));
+    String laeqStr = m.get("object.LAeq");
+    if (laeqStr == null) laeqStr = m.get("LAeq");
+    String laiStr = m.get("object.LAI");
+    if (laiStr == null) laiStr = m.get("LAI");
+    String laimaxStr = m.get("object.LAImax");
+    if (laimaxStr == null) laimaxStr = m.get("LAImax");
+    
+    measures.put("laeq", toD(laeqStr));
+    measures.put("lai", toD(laiStr));
+    measures.put("laimax", toD(laimaxStr));
     s.measures = measures;
 
     // en noise los CSV traen batería/estado como object.battery/status
-    s.device.put("battery", toD(m.get("object.battery")));
-    s.device.put("status", m.get("object.status"));
+    String batteryStr = m.get("object.battery");
+    if (batteryStr == null) batteryStr = m.get("battery");
+    String statusStr = m.get("object.status");
+    if (statusStr == null) statusStr = m.get("status");
+    
+    s.device.put("battery", toD(batteryStr));
+    s.device.put("status", statusStr);
     return s;
   }
 }

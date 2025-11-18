@@ -198,6 +198,13 @@ async function publishCsvToKafka(csvPath, type, onProgress) {
     });
 
     parser.on("data", async (row) => {
+      // Filtrar filas completamente vacías
+      const hasData = Object.values(row).some(v => v && v.toString().trim());
+      if (!hasData) {
+        console.warn("⚠️ Fila vacía descartada del CSV");
+        return;
+      }
+      
       // row es un objeto con columnas -> normaliza si quieres
       // Publica tal cual JSON (tu consumer ya sabe normalizar en ingest.service)
       batch.push({ value: JSON.stringify(row) });
