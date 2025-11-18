@@ -68,7 +68,9 @@ export const airCrudeSchema = Joi.object({
     .max(100)
     .optional()
     .allow(null, "")
-});
+})
+  // 👇 Acepta campos extra como type, device, location, radio, measures, labels...
+  .unknown(true);
 
 /**
  * Schema para datos CRUDE de sensores de ruido
@@ -127,7 +129,8 @@ export const noiseCrudeSchema = Joi.object({
     .max(100)
     .optional()
     .allow(null, "")
-});
+})
+  .unknown(true);
 
 /**
  * Schema para datos CRUDE de sensores subterráneos
@@ -166,11 +169,13 @@ export const undergroundCrudeSchema = Joi.object({
     .max(100)
     .optional()
     .allow(null, "")
-});
+})
+  .unknown(true);
 
 /**
  * Schema para datos AGREGADOS (avg1m) de calidad del aire
- * Formato: { sum_temperature, sum_humidity, sum_co2, sum_voc, count, locationName? }
+ * Formato: { sum_temperature, sum_humidity, sum_co2, sum_pressure, count, locationName? }
+ * OJO: esto tiene que coincidir con lo que realmente emite tu StreamsApp.
  */
 export const airAggregatedSchema = Joi.object({
   sum_temperature: Joi.number()
@@ -191,10 +196,10 @@ export const airAggregatedSchema = Joi.object({
       "any.required": "sum_co2 es requerido"
     }),
   
-  sum_voc: Joi.number()
+  sum_pressure: Joi.number()
     .required()
     .messages({
-      "any.required": "sum_voc es requerido"
+      "any.required": "sum_pressure es requerido"
     }),
   
   count: Joi.number()
@@ -210,7 +215,8 @@ export const airAggregatedSchema = Joi.object({
     .max(100)
     .optional()
     .allow(null, "")
-});
+})
+  .unknown(true);
 
 /**
  * Schema para datos AGREGADOS (avg1m) de ruido
@@ -248,7 +254,8 @@ export const noiseAggregatedSchema = Joi.object({
     .max(100)
     .optional()
     .allow(null, "")
-});
+})
+  .unknown(true);
 
 /**
  * Schema para datos AGREGADOS (avg1m) subterráneos
@@ -274,7 +281,8 @@ export const undergroundAggregatedSchema = Joi.object({
     .max(100)
     .optional()
     .allow(null, "")
-});
+})
+  .unknown(true);
 
 /**
  * Función para verificar si un registro tiene datos significativos (no está completamente vacío)
@@ -283,32 +291,29 @@ export const undergroundAggregatedSchema = Joi.object({
  * @returns {boolean} true si tiene al menos un campo con datos
  */
 export function hasSignificantData(data, type) {
-  if (!data || typeof data !== 'object') return false;
+  if (!data || typeof data !== "object") return false;
 
-  if (type === 'air') {
-    // Para aire: al menos uno de estos debe tener valor (incluyendo 0 para números)
+  if (type === "air") {
     return !!(
       (data.devEui && data.devEui.toString().trim()) ||
-      (data.temperature !== null && data.temperature !== undefined && data.temperature !== '') ||
-      (data.humidity !== null && data.humidity !== undefined && data.humidity !== '') ||
-      (data.co2 !== null && data.co2 !== undefined && data.co2 !== '') ||
-      (data.voc !== null && data.voc !== undefined && data.voc !== '') ||
+      (data.temperature !== null && data.temperature !== undefined && data.temperature !== "") ||
+      (data.humidity !== null && data.humidity !== undefined && data.humidity !== "") ||
+      (data.co2 !== null && data.co2 !== undefined && data.co2 !== "") ||
+      (data.voc !== null && data.voc !== undefined && data.voc !== "") ||
       (data.time && data.time.toString && data.time.toString().trim())
     );
-  } else if (type === 'noise') {
-    // Para ruido: al menos uno de estos debe tener valor (incluyendo 0 para números)
+  } else if (type === "noise") {
     return !!(
       (data.devEui && data.devEui.toString().trim()) ||
-      (data.laeq !== null && data.laeq !== undefined && data.laeq !== '') ||
-      (data.lai !== null && data.lai !== undefined && data.lai !== '') ||
-      (data.laimax !== null && data.laimax !== undefined && data.laimax !== '') ||
+      (data.laeq !== null && data.laeq !== undefined && data.laeq !== "") ||
+      (data.lai !== null && data.lai !== undefined && data.lai !== "") ||
+      (data.laimax !== null && data.laimax !== undefined && data.laimax !== "") ||
       (data.time && data.time.toString && data.time.toString().trim())
     );
-  } else if (type === 'underground') {
-    // Para subterráneo: al menos uno de estos debe tener valor (incluyendo 0 para números)
+  } else if (type === "underground") {
     return !!(
       (data.devEui && data.devEui.toString().trim()) ||
-      (data.distance !== null && data.distance !== undefined && data.distance !== '') ||
+      (data.distance !== null && data.distance !== undefined && data.distance !== "") ||
       (data.time && data.time.toString && data.time.toString().trim())
     );
   }
@@ -323,22 +328,23 @@ export function hasSignificantData(data, type) {
  * @returns {{ valid: boolean, errors: string[] | null, value: any }}
  */
 export function validateData(data, schema) {
-  const { error, value } = schema.validate(data, { 
-    abortEarly: false, // Recopilar todos los errores
-    stripUnknown: true  // Eliminar campos desconocidos
+  const { error, value } = schema.validate(data, {
+    abortEarly: false,   // recopilar todos los errores
+    stripUnknown: false, // NO borrar device, measures, location, etc.
+    allowUnknown: true   // permitir campos que no están en el schema
   });
 
   if (error) {
     return {
       valid: false,
-      errors: error.details.map(detail => detail.message),
-      value: null
+      errors: error.details.map((detail) => detail.message),
+      value: null,
     };
   }
 
   return {
     valid: true,
     errors: null,
-    value
+    value,
   };
 }

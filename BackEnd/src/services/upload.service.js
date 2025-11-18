@@ -123,15 +123,17 @@ export async function completeUpload(id, io) {
     { $set: { filePath: outPath, status: "completed" } }
   );
 
-  // Llamar al Ingestor Java después de ensamblar el CSV
-try {
-  await triggerIngestor(s.type, s.assembledPath);
-} catch (err) {
-  console.error("⚠️ Error al ejecutar el Ingestor Java:", err.message);
-}
+  // 🔥 Ejecutar el ingestor Java (único camino CSV -> Kafka)
+  try {
+    await triggerIngestor(s.type, s.assembledPath);
+  } catch (err) {
+    console.error("⚠️ Error al ejecutar el Ingestor Java:", err.message);
+    // Si quieres que el front vea el fallo, puedes relanzar:
+    // throw err;
+    // Por ahora solo lo logeamos y seguimos.
+  }
 
-  
-  // Limpia partes (opcional)
+  // Limpia partes
   for (let i = 0; i < s.partsExpected; i++) {
     const partName = String(i).padStart(6, "0");
     const partPath = path.join(s.folder, `${partName}.part`);
@@ -141,13 +143,13 @@ try {
   // Emite evento de ensamblado
   io?.emit("upload:completed", { id: s.id, filename: s.filename, type: s.type });
 
-  // Dispara ingesta hacia Kafka
-  const stats = await publishCsvToKafka(s.assembledPath, s.type, (progress) => {
-    // feedback tiempo real
-    io?.emit("ingest:progress", { id: s.id, ...progress });
-  });
+  // 🔴 YA NO llamamos a publishCsvToKafka, Java ya hizo la ingesta
 
-  return { id: s.id, output: s.assembledPath, stats };
+  return {
+    id: s.id,
+    output: s.assembledPath,
+    stats: { via: "java-ingestor" },
+  };
 }
 
 // ---- Publicación CSV -> Kafka por filas ----
@@ -208,7 +210,7 @@ async function publishCsvToKafka(csvPath, type, onProgress) {
       // row es un objeto con columnas -> normaliza si quieres
       // Publica tal cual JSON (tu consumer ya sabe normalizar en ingest.service)
       batch.push({ value: JSON.stringify(row) });
-      if (batch.length >= 500) {
+      if (batch.length >= 50) {
         parser.pause();
         flush().then(() => parser.resume()).catch(reject);
       }
