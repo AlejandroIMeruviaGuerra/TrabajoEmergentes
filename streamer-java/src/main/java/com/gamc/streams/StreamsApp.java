@@ -10,9 +10,12 @@ import org.apache.kafka.streams.StreamsConfig;
 import org.apache.kafka.streams.Topology;
 import org.apache.kafka.streams.kstream.*;
 import org.apache.kafka.streams.KeyValue;
+import org.apache.kafka.streams.kstream.Windowed;
 
 import java.time.Duration;
 import java.util.Properties;
+
+import com.gamc.streams.mysql.AirAggRepository;
 
 public class StreamsApp {
 
@@ -29,37 +32,56 @@ public class StreamsApp {
   }
 
   // ==================== CONFIG POR DEFECTO ====================
-  private static Properties defaultConfig() {
+    private static Properties defaultConfig() {
     Properties p = new Properties();
+  
+    String bootstrap = System.getenv().getOrDefault("BOOTSTRAP_SERVERS", "localhost:9092");
+  
     p.put(StreamsConfig.APPLICATION_ID_CONFIG,
         System.getProperty("application.id", "gamc-streams"));
-    p.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG,
-        System.getProperty("bootstrap.servers", "localhost:9092"));
+    p.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrap);
     p.put(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG, Serdes.String().getClass());
     p.put(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, Serdes.String().getClass());
     return p;
   }
 
+
   // ==================== TOPOLOGÍA (para main y para tests) ====================
   public static Topology buildTopology() {
     StreamsBuilder builder = new StreamsBuilder();
-    buildTopology(builder);
+    String mysqlHost = System.getenv("DB_HOST");
+    String mysqlDb   = System.getenv("DB_NAME");
+    String mysqlUser = System.getenv("DB_USER");
+    String mysqlPass = System.getenv("DB_PASS");
+    String mysqlPort = System.getenv("DB_PORT");
+    String jdbcHost = mysqlHost + ":" + mysqlPort;
+
+
+    AirAggRepository airRepo = new AirAggRepository(
+        jdbcHost,
+        mysqlDb,
+        mysqlUser,
+        mysqlPass
+    );
+
+
+    buildTopology(builder, airRepo);
     return builder.build();
   }
 
-  static void buildTopology(StreamsBuilder b) {
-    // ---- Input topics en crudo (JSON de SensorRecord) ----
-    KStream<String, String> air   = b.stream("sensores.air");
-    KStream<String, String> noise = b.stream("sensores.noise");
-    KStream<String, String> und   = b.stream("sensores.underground");
+  static void buildTopology(StreamsBuilder b, AirAggRepository airRepo) {
+  // ---- Input topics en crudo (JSON de SensorRecord) ----
+  KStream<String, String> air   = b.stream("sensores.air");
+  KStream<String, String> noise = b.stream("sensores.noise");
+  KStream<String, String> und   = b.stream("sensores.underground");
 
-    // Ventana tumbling de 1 minuto con 30s de gracia (tolerancia a desorden)
-    Duration win   = Duration.ofMinutes(1);
-    Duration grace = Duration.ofSeconds(30);
-    TimeWindows tumbling = TimeWindows.ofSizeAndGrace(win, grace);
+  // Ventana tumbling de 1 minuto con 30s de gracia (tolerancia a desorden)
+  Duration win   = Duration.ofMinutes(1);
+  Duration grace = Duration.ofSeconds(30);
+  TimeWindows tumbling = TimeWindows.ofSizeAndGrace(win, grace);
 
-    // ======================= AIR =======================
-    air
+  // ======================= AIR =======================
+  KStream<Windowed<String>, String> airAgg = air
       // key = devEui
       .selectKey((k, v) -> extractDevEui(v))
       .filter((k, v) -> k != null)
@@ -69,12 +91,41 @@ public class StreamsApp {
       .groupByKey()
       .windowedBy(tumbling)
       .aggregate(
-        StreamsApp::emptyAirAgg,                               // valor inicial
-        (key, val, agg) -> mergeAir(agg, val),                 // acumulador
-        Materialized.with(Serdes.String(), Serdes.String())
+          StreamsApp::emptyAirAgg,                               // valor inicial
+          (key, val, agg) -> mergeAir(agg, val),                 // acumulador
+          Materialized.with(Serdes.String(), Serdes.String())
       )
-      .toStream()
-      // salida: key=devEui, value=json con promedios y ventana
+      .toStream();
+
+  // 1) Guardar en MySQL
+  airAgg.foreach((windowedKey, aggJson) -> {
+    try {
+      String devEui = windowedKey.key();
+      long start = windowedKey.window().start();
+
+      // Parsear el JSON agregado
+      JsonNode agg = MAPPER.readTree(aggJson);
+
+      double co2  = agg.path("sum_co2").asDouble() / agg.path("count").asLong();
+      double temp = agg.path("sum_t").asDouble()   / agg.path("count").asLong();
+      double hum  = agg.path("sum_h").asDouble()   / agg.path("count").asLong();
+      double pres = agg.path("sum_p").asDouble()   / agg.path("count").asLong();
+      long count  = agg.path("count").asLong();
+
+      // Guardar en MySQL
+      airRepo.saveAirAgg(
+          devEui,
+          new java.sql.Timestamp(start).toString(),
+          co2, temp, hum, pres, count
+      );
+
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+  });
+
+  // 2) (Opcional) seguir mandando a topic de agregados para otras cosas
+  airAgg
       .map((windowedKey, aggJson) -> {
         String devEui = windowedKey.key();
         long start = windowedKey.window().start();
@@ -84,52 +135,52 @@ public class StreamsApp {
       })
       .to("sensores.air.avg1m");
 
-    // ======================= NOISE =======================
-    noise
-      .selectKey((k, v) -> extractDevEui(v))
-      .filter((k, v) -> k != null)
-      .mapValues(StreamsApp::extractNoiseMeasures) // {laeq,lai,laimax,ts,locationName}
-      .filter((k, v) -> v != null)
-      .groupByKey()
-      .windowedBy(tumbling)
-      .aggregate(
-        StreamsApp::emptyNoiseAgg,
-        (key, val, agg) -> mergeNoise(agg, val),
-        Materialized.with(Serdes.String(), Serdes.String())
-      )
-      .toStream()
-      .map((windowedKey, aggJson) -> {
-        String devEui = windowedKey.key();
-        long start = windowedKey.window().start();
-        long end   = windowedKey.window().end();
-        String outJson = finalizeNoise(devEui, start, end, aggJson);
-        return KeyValue.pair(devEui, outJson);
-      })
-      .to("sensores.noise.avg1m");
+  // ======================= NOISE =======================
+  noise
+    .selectKey((k, v) -> extractDevEui(v))
+    .filter((k, v) -> k != null)
+    .mapValues(StreamsApp::extractNoiseMeasures) // {laeq,lai,laimax,ts,locationName}
+    .filter((k, v) -> v != null)
+    .groupByKey()
+    .windowedBy(tumbling)
+    .aggregate(
+      StreamsApp::emptyNoiseAgg,
+      (key, val, agg) -> mergeNoise(agg, val),
+      Materialized.with(Serdes.String(), Serdes.String())
+    )
+    .toStream()
+    .map((windowedKey, aggJson) -> {
+      String devEui = windowedKey.key();
+      long start = windowedKey.window().start();
+      long end   = windowedKey.window().end();
+      String outJson = finalizeNoise(devEui, start, end, aggJson);
+      return KeyValue.pair(devEui, outJson);
+    })
+    .to("sensores.noise.avg1m");
 
-    // ======================= UNDERGROUND =======================
-    und
-      .selectKey((k, v) -> extractDevEui(v))
-      .filter((k, v) -> k != null)
-      .mapValues(StreamsApp::extractUndMeasures) // {distance,ts,locationName}
-      .filter((k, v) -> v != null)
-      .groupByKey()
-      .windowedBy(tumbling)
-      .aggregate(
-        StreamsApp::emptyUndAgg,
-        (key, val, agg) -> mergeUnd(agg, val),
-        Materialized.with(Serdes.String(), Serdes.String())
-      )
-      .toStream()
-      .map((windowedKey, aggJson) -> {
-        String devEui = windowedKey.key();
-        long start = windowedKey.window().start();
-        long end   = windowedKey.window().end();
-        String outJson = finalizeUnd(devEui, start, end, aggJson);
-        return KeyValue.pair(devEui, outJson);
-      })
-      .to("sensores.underground.avg1m");
-  }
+  // ======================= UNDERGROUND =======================
+  und
+    .selectKey((k, v) -> extractDevEui(v))
+    .filter((k, v) -> k != null)
+    .mapValues(StreamsApp::extractUndMeasures) // {distance,ts,locationName}
+    .filter((k, v) -> v != null)
+    .groupByKey()
+    .windowedBy(tumbling)
+    .aggregate(
+      StreamsApp::emptyUndAgg,
+      (key, val, agg) -> mergeUnd(agg, val),
+      Materialized.with(Serdes.String(), Serdes.String())
+    )
+    .toStream()
+    .map((windowedKey, aggJson) -> {
+      String devEui = windowedKey.key();
+      long start = windowedKey.window().start();
+      long end   = windowedKey.window().end();
+      String outJson = finalizeUnd(devEui, start, end, aggJson);
+      return KeyValue.pair(devEui, outJson);
+    })
+    .to("sensores.underground.avg1m");
+}
 
   // ====================== HELPERS DE PARSEO ======================
   static String extractDevEui(String json) {

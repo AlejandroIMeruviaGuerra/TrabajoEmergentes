@@ -15,6 +15,7 @@ import sensorsRoutes from "./routes/sensors.routes.js";
 import authRoutes from "./routes/auth.routes.js";
 import uploadsRoutes from "./routes/uploads.routes.js";
 import healthRoutes from "./routes/health.routes.js";
+import reportsRoutes from "./routes/reports.routes.js";
 
 // Kafka
 import { startConsumer, setSocketIO, stopConsumer } from "./kafka/consumer.js";
@@ -37,6 +38,7 @@ app.use("/api/sensors", sensorsRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/uploads", uploadsRoutes);
 app.use("/api/health", healthRoutes);
+app.use("/api/reports", reportsRoutes);
 
 // Healthcheck legacy (mantener por compatibilidad, pero usar /api/health/)
 app.get("/health", (_req, res) => {

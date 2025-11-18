@@ -1,21 +1,35 @@
 import { useState } from "react";
-import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from "react-router-dom";
+import {
+  BrowserRouter,
+  Routes,
+  Route,
+  Navigate,
+  useLocation,
+  useNavigate
+} from "react-router-dom";
+
 import AuthProvider from "./context/AuthProvider.jsx";
 import { useAuth } from "./context/useAuth.jsx";
+
 import Login from "./components/Login";
 import Dashboard from "./components/Dashboard";
 import UploadCsv from "./components/UploadCsv";
+import AirReports from "./components/AirReports";  
 import AppShell from "./components/AppShell";
 
+// --- Private wrapper ---
 function Private({ children }) {
   const { isAuthenticated, loading } = useAuth();
   const loc = useLocation();
+
   if (loading) return <div>Cargando...</div>;
-  if (!isAuthenticated) return <Navigate to="/login" state={{ from: loc }} replace />;
-  // Aquí renderizamos el shell con el contenido dentro
+  if (!isAuthenticated)
+    return <Navigate to="/login" state={{ from: loc }} replace />;
+
   return <AppShell>{children}</AppShell>;
 }
 
+// --- Login wrapper ---
 function LoginPage() {
   const { isAuthenticated, login, loading } = useAuth();
   const [error, setError] = useState(null);
@@ -43,10 +57,12 @@ function LoginPage() {
   return <Login onLogin={handleLogin} error={error} loading={loginLoading || loading} />;
 }
 
+// --- Routes ---
 function AppContent() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+
       <Route
         path="/"
         element={
@@ -55,6 +71,17 @@ function AppContent() {
           </Private>
         }
       />
+
+      {/* 🔥 AQUI AGREGAMOS LA RUTA CORRECTA */}
+      <Route
+        path="/reportes/aire"
+        element={
+          <Private>
+            <AirReports />
+          </Private>
+        }
+      />
+
       <Route
         path="/upload"
         element={
@@ -63,6 +90,8 @@ function AppContent() {
           </Private>
         }
       />
+
+      {/* fallback */}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

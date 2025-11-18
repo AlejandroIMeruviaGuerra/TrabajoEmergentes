@@ -34,7 +34,7 @@ export async function startConsumer() {
   });
 
   consumer = kafka.consumer({
-    groupId: "grupo-sensores",
+    groupId: "grupo-sensores-v2",
     sessionTimeout: 30000,
   });
 
@@ -43,9 +43,9 @@ export async function startConsumer() {
   setKafkaConsumerStatus(true); // Actualizar estado para health check
 
   // Crudos
-  await consumer.subscribe({ topic: "sensores.air", fromBeginning: true });
-  await consumer.subscribe({ topic: "sensores.noise", fromBeginning: true });
-  await consumer.subscribe({ topic: "sensores.underground", fromBeginning: true });
+  await consumer.subscribe({ topic: "sensores.air", fromBeginning: false });
+  await consumer.subscribe({ topic: "sensores.noise", fromBeginning: false });
+  await consumer.subscribe({ topic: "sensores.underground", fromBeginning: false });
 
   // Agregados 1m (salida de Kafka Streams)
   await consumer.subscribe({ topic: "sensores.air.avg1m", fromBeginning: false });

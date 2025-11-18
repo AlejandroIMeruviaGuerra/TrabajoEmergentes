@@ -2,6 +2,7 @@ import { useEffect, useMemo, useReducer, useState } from "react";
 import { socket } from "../services/socket";
 import { fetchByType } from "../services/api";
 import SensorChart from "./SensorChart";
+import { useNavigate } from "react-router-dom";
 
 import { useAuth } from "../context/useAuth.jsx";
 const TYPES = [
@@ -30,6 +31,7 @@ function reducer(state, action) {
 }
 
 export default function Dashboard() {
+  const navigate = useNavigate();
   const [active, setActive] = useState("air");
   const [state, dispatch] = useReducer(reducer, { air: [], noise: [], underground: [] });
   const [connected, setConnected] = useState(false);
@@ -140,24 +142,45 @@ export default function Dashboard() {
       </header>
 
       {/* Tabs */}
-      <nav style={{ display: "flex", gap: 8, marginBottom: 16 }}>
-        {TYPES.map((t) => (
-          <button
-            key={t.id}
-            onClick={() => setActive(t.id)}
-            style={{
-              padding: "8px 12px",
-              borderRadius: 10,
-              border: "1px solid #e5e7eb",
-              background: active === t.id ? "#111827" : "#ffffff",
-              color: active === t.id ? "#ffffff" : "#111827",
-              cursor: "pointer",
-            }}
-          >
-            {t.label}
-          </button>
-        ))}
-      </nav>
+      <nav style={{ display: "flex", gap: 8, marginBottom: 16, alignItems: "center" }}>
+  {TYPES.map((t) => (
+    <button
+      key={t.id}
+      onClick={() => setActive(t.id)}
+      style={{
+        padding: "8px 12px",
+        borderRadius: 10,
+        border: "1px solid #e5e7eb",
+        background: active === t.id ? "#111827" : "#ffffff",
+        color: active === t.id ? "#ffffff" : "#111827",
+        cursor: "pointer",
+      }}
+    >
+      {t.label}
+    </button>
+  ))}
+
+  {active === "air" && (
+    <button
+      onClick={() => navigate("/reportes/aire")}  // 👈 AHORA FUNCIONA
+      style={{
+        marginLeft: "auto",
+        padding: "8px 12px",
+        borderRadius: 10,
+        border: "1px solid #06b6d4",
+        background: "#ecfeff",
+        color: "#0e7490",
+        cursor: "pointer",
+        fontSize: 13,
+        fontWeight: "500",
+      }}
+    >
+      Ver Reportes de Aire →
+    </button>
+  )}
+
+</nav>
+
 
       <section style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 12, padding: 16 }}>
         <SensorChart data={state[active] || []} series={series} yLabel={yLabel} />

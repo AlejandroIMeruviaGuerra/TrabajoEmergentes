@@ -8,13 +8,12 @@ import csv from "fast-csv";
 import Upload from "../models/Upload.model.js";
 import { triggerIngestor } from "../workers/ingest-trigger.js";
 
-
-
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const UPLOAD_DIR = process.env.UPLOAD_DIR || "./uploads";
-const CHUNK_SIZE = (parseInt(process.env.CHUNK_SIZE_MB || "5", 10)) * 1024 * 1024;
+const CHUNK_SIZE =
+  (parseInt(process.env.CHUNK_SIZE_MB || "5", 10)) * 1024 * 1024;
 
 // Asegura carpeta
 if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
@@ -30,7 +29,7 @@ export async function initUpload({ filename, size, type }) {
   const parts = Math.ceil(size / CHUNK_SIZE);
   const folder = path.join(UPLOAD_DIR, id);
   fs.mkdirSync(folder, { recursive: true });
-  
+
   const meta = {
     uploadId: id,
     filename,
@@ -41,12 +40,24 @@ export async function initUpload({ filename, size, type }) {
     status: "in_progress",
   };
 
-  // Guardar en Mongo
-  await Upload.create(meta);
-
+  /**
+   * Guardar en Mongo
+   * ⚠️ Como Atlas está al límite de espacio, estas operaciones
+   * pueden lanzar errores de "over your space quota".
+   * En lugar de romper el endpoint (500), sólo hacemos un warn.
+   */
+  try {
+    await Upload.create(meta);
+  } catch (e) {
+    console.warn("⚠️ No se pudo registrar upload en Mongo:", e.message);
+    // No relanzamos el error para que la subida continúe
+  }
 
   sessions.set(id, {
-    id, filename, size, type,
+    id,
+    filename,
+    size,
+    type,
     partsExpected: parts,
     received: new Set(), // part indexes
     folder,
@@ -69,11 +80,22 @@ export async function writeChunk(id, partIndex, buffer) {
   await fs.promises.writeFile(tmpPath, buffer);
   s.received.add(partIndex);
 
-  // Actualiza progreso en Mongo
-  await Upload.updateOne(
-    { uploadId: id },
-    { $addToSet: { receivedChunks: partIndex }, $set: { status: "in_progress" } }
-  );
+  /**
+   * Actualiza progreso en Mongo
+   * ⚠️ Igual que en initUpload, si Mongo está lleno esto puede fallar.
+   * Lo atrapamos para no romper el flujo de subida.
+   */
+  try {
+    await Upload.updateOne(
+      { uploadId: id },
+      {
+        $addToSet: { receivedChunks: partIndex },
+        $set: { status: "in_progress" },
+      }
+    );
+  } catch (e) {
+    console.warn("⚠️ No se pudo actualizar upload en Mongo:", e.message);
+  }
 
   return { received: s.received.size, partsExpected: s.partsExpected };
 }
@@ -91,7 +113,7 @@ export function statusUpload(id) {
   };
 }
 
-// ---- Ensamblar y disparar ingesta CSV->Kafka ----
+// ---- Ensamblar y disparar ingesta CSV->Kafka vía Java ----
 export async function completeUpload(id, io) {
   const s = sessions.get(id);
   if (!s) throw new Error("Upload session not found");
@@ -117,20 +139,30 @@ export async function completeUpload(id, io) {
   await new Promise((res) => out.end(res));
   s.assembledPath = outPath;
 
-  // Actualiza registro Mongo
-  await Upload.updateOne(
-    { uploadId: id },
-    { $set: { filePath: outPath, status: "completed" } }
-  );
+  /**
+   * Actualiza registro Mongo
+   * ⚠️ También lo envolvemos en try/catch por el tema de la cuota.
+   */
+  try {
+    await Upload.updateOne(
+      { uploadId: id },
+      { $set: { filePath: outPath, status: "completed" } }
+    );
+  } catch (e) {
+    console.warn(
+      "⚠️ No se pudo marcar upload como 'completed' en Mongo:",
+      e.message
+    );
+  }
 
-  // 🔥 Ejecutar el ingestor Java (único camino CSV -> Kafka)
+  // 🔥 Ejecutar el ingestor Java (único camino CSV -> Kafka ahora mismo)
   try {
     await triggerIngestor(s.type, s.assembledPath);
   } catch (err) {
     console.error("⚠️ Error al ejecutar el Ingestor Java:", err.message);
-    // Si quieres que el front vea el fallo, puedes relanzar:
+    // Si quisieras propagar el error al front:
     // throw err;
-    // Por ahora solo lo logeamos y seguimos.
+    // Por ahora sólo lo logeamos y seguimos.
   }
 
   // Limpia partes
@@ -141,9 +173,14 @@ export async function completeUpload(id, io) {
   }
 
   // Emite evento de ensamblado
-  io?.emit("upload:completed", { id: s.id, filename: s.filename, type: s.type });
+  io?.emit("upload:completed", {
+    id: s.id,
+    filename: s.filename,
+    type: s.type,
+  });
 
-  // 🔴 YA NO llamamos a publishCsvToKafka, Java ya hizo la ingesta
+  // 🔴 YA NO llamamos a publishCsvToKafka,
+  // porque ahora la ingesta CSV -> Kafka la realiza el JAR de Java (triggerIngestor).
 
   return {
     id: s.id,
@@ -152,7 +189,12 @@ export async function completeUpload(id, io) {
   };
 }
 
-// ---- Publicación CSV -> Kafka por filas ----
+/**
+ * ---- Publicación CSV -> Kafka por filas (MODO LEGACY) ----
+ * Este método se usaba cuando Node.js publicaba directamente al tópico crudo.
+ * Lo dejamos aquí comentado como "plan B" por si en algún momento
+ * quieres dejar de usar el ingestor Java y volver a ingestar desde Node.
+ */
 async function publishCsvToKafka(csvPath, type, onProgress) {
   const topicMap = {
     air: "sensores.air",
@@ -164,7 +206,7 @@ async function publishCsvToKafka(csvPath, type, onProgress) {
 
   const brokers = (process.env.KAFKA_BROKERS || "host.docker.internal:9092")
     .split(",")
-    .map(s => s.trim());
+    .map((s) => s.trim());
 
   const kafka = new Kafka({
     clientId: "csv-uploader",
@@ -173,7 +215,7 @@ async function publishCsvToKafka(csvPath, type, onProgress) {
   });
 
   const producer = kafka.producer({
-    createPartitioner: Partitioners.LegacyPartitioner // silencia warning v2
+    createPartitioner: Partitioners.LegacyPartitioner, // silencia warning v2
   });
 
   await producer.connect();
@@ -195,18 +237,22 @@ async function publishCsvToKafka(csvPath, type, onProgress) {
 
   return new Promise((resolve, reject) => {
     parser.on("error", async (err) => {
-      try { await producer.disconnect(); } catch {}
+      try {
+        await producer.disconnect();
+      } catch {}
       reject(err);
     });
 
     parser.on("data", async (row) => {
       // Filtrar filas completamente vacías
-      const hasData = Object.values(row).some(v => v && v.toString().trim());
+      const hasData = Object.values(row).some(
+        (v) => v && v.toString().trim()
+      );
       if (!hasData) {
         console.warn("⚠️ Fila vacía descartada del CSV");
         return;
       }
-      
+
       // row es un objeto con columnas -> normaliza si quieres
       // Publica tal cual JSON (tu consumer ya sabe normalizar en ingest.service)
       batch.push({ value: JSON.stringify(row) });

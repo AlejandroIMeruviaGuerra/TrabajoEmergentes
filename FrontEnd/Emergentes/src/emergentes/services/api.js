@@ -107,6 +107,14 @@ export async function uploadComplete({ uploadId }) {
   return data;
 }
 
+// --- Reportes avanzados ---
+// GET /api/reports/air/overview
+export async function fetchAirOverview(params = {}) {
+  const { data } = await api.get("/reports/air/overview", { params });
+  return data; // { ok, evolucion, porSensor, histograma }
+}
+
+
 /*// 1) init
 export async function uploadInit({ filename, size, type }) {
   const { data } = await api.post("/uploads/init", {
@@ -135,3 +143,5 @@ export async function uploadComplete({ uploadId }) {
   const { data } = await api.post("/uploads/complete", { uploadId });
   return data; // { ok, message, summary? }
 }*/
+
+
