@@ -84,7 +84,8 @@ public class StreamsApp {
   KStream<Windowed<String>, String> airAgg = air
       // key = devEui
       .selectKey((k, v) -> extractDevEui(v))
-      .filter((k, v) -> k != null)
+      .filter((k, v) -> k != null && !k.isBlank())
+
       // convertir a JSON compacto con solo lo necesario
       .mapValues(StreamsApp::extractAirMeasures) // {co2,temperature,humidity,pressure,ts,locationName}
       .filter((k, v) -> v != null)
@@ -197,9 +198,19 @@ public class StreamsApp {
       JsonNode n = MAPPER.readTree(json);
       JsonNode m = n.path("measures");
       String loc = n.path("location").path("address").asText("");
-      long ts = n.path("time").isNumber()
-        ? n.path("time").asLong()
-        : n.path("time").asText("").hashCode();
+     String timeStr = n.path("time").asText();
+long ts;
+
+try {
+    ts = Long.parseLong(timeStr); // epoch
+} catch (Exception e) {
+    try {
+        ts = java.time.Instant.parse(timeStr).toEpochMilli(); // ISO
+    } catch (Exception ex) {
+        ts = System.currentTimeMillis(); // fallback
+    }
+}
+
       double co2 = m.path("co2").asDouble(Double.NaN);
       double t   = m.path("temperature").asDouble(Double.NaN);
       double h   = m.path("humidity").asDouble(Double.NaN);
