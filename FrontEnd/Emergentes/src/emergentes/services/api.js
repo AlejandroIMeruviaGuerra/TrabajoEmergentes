@@ -113,7 +113,15 @@ export async function fetchAirOverview(params = {}) {
   const { data } = await api.get("/reports/air/overview", { params });
   return data; // { ok, evolucion, porSensor, histograma }
 }
+export async function fetchNoiseOverview(params) {
+  const { data } = await api.get("/reports/noise/overview", { params });
+  return data;
+}
 
+export async function fetchUndergroundOverview(params) {
+ const { data } = await api.get("/reports/underground/overview", { params });
+  return data;
+}
 
 /*// 1) init
 export async function uploadInit({ filename, size, type }) {

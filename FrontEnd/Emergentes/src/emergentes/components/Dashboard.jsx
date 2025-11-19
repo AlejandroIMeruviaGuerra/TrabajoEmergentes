@@ -1,17 +1,17 @@
+// src/components/Dashboard.jsx
 import { useEffect, useMemo, useReducer, useState } from "react";
 import { socket } from "../services/socket";
 import { fetchByType } from "../services/api";
 import SensorChart from "./SensorChart";
 import { useNavigate } from "react-router-dom";
-
 import { useAuth } from "../context/useAuth.jsx";
+
 const TYPES = [
   { id: "air", label: "Calidad de Aire" },
   { id: "noise", label: "Ruido" },
   { id: "underground", label: "Soterrado" },
 ];
 
-// Reducer: mantiene { air:[], noise:[], underground:[] }
 function reducer(state, action) {
   switch (action.type) {
     case "INIT_TYPE": {
@@ -21,7 +21,6 @@ function reducer(state, action) {
     case "PUSH_POINT": {
       const { key, point } = action.payload;
       const next = [...(state[key] || []), point];
-      // ventana móvil (máx 200 para histórico local)
       if (next.length > 200) next.shift();
       return { ...state, [key]: next };
     }
@@ -33,11 +32,15 @@ function reducer(state, action) {
 export default function Dashboard() {
   const navigate = useNavigate();
   const [active, setActive] = useState("air");
-  const [state, dispatch] = useReducer(reducer, { air: [], noise: [], underground: [] });
+  const [state, dispatch] = useReducer(reducer, {
+    air: [],
+    noise: [],
+    underground: [],
+  });
   const [connected, setConnected] = useState(false);
   const { logout } = useAuth();
 
-  // Carga inicial (REST) por cada tipo
+  // Carga inicial (REST) por tipo
   useEffect(() => {
     TYPES.forEach(async ({ id }) => {
       try {
@@ -49,15 +52,13 @@ export default function Dashboard() {
     });
   }, []);
 
-  // Subscribirse al socket (tiempo real)
+  // Socket tiempo real
   useEffect(() => {
     function onConnect() {
       setConnected(true);
-      // console.log("Socket conectado");
     }
     function onDisconnect() {
       setConnected(false);
-      // console.log("Socket desconectado");
     }
     function onNewData({ type, value }) {
       const point = {
@@ -68,7 +69,9 @@ export default function Dashboard() {
         decibels: value.decibels,
         humidity: value.humidity,
         temperature: value.temperature,
+        distance: value.distance,
       };
+
       if (TYPES.some((t) => t.id === type)) {
         dispatch({ type: "PUSH_POINT", payload: { key: type, point } });
       }
@@ -97,10 +100,8 @@ export default function Dashboard() {
     if (active === "noise") {
       return [{ key: "decibels", label: "dB (decibelios)" }];
     }
-    return [
-      { key: "humidity", label: "Humedad (%)" },
-      { key: "temperature", label: "Temperatura (°C)" },
-    ];
+    // underground (soterrado)
+    return [{ key: "distance", label: "Distancia (cm)" }];
   }, [active]);
 
   const yLabel = useMemo(() => {
@@ -111,7 +112,14 @@ export default function Dashboard() {
 
   return (
     <div style={{ maxWidth: 1100, margin: "24px auto", padding: "0 16px" }}>
-      <header style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+      <header
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          marginBottom: 16,
+        }}
+      >
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <h1 style={{ fontSize: 22, margin: 0 }}>Dashboard — GAMC</h1>
           <span
@@ -141,49 +149,104 @@ export default function Dashboard() {
         </button>
       </header>
 
-      {/* Tabs */}
-      <nav style={{ display: "flex", gap: 8, marginBottom: 16, alignItems: "center" }}>
-  {TYPES.map((t) => (
-    <button
-      key={t.id}
-      onClick={() => setActive(t.id)}
-      style={{
-        padding: "8px 12px",
-        borderRadius: 10,
-        border: "1px solid #e5e7eb",
-        background: active === t.id ? "#111827" : "#ffffff",
-        color: active === t.id ? "#ffffff" : "#111827",
-        cursor: "pointer",
-      }}
-    >
-      {t.label}
-    </button>
-  ))}
+      {/* Tabs + botones de reportes */}
+      <nav
+        style={{
+          display: "flex",
+          gap: 8,
+          marginBottom: 16,
+          alignItems: "center",
+        }}
+      >
+        {TYPES.map((t) => (
+          <button
+            key={t.id}
+            onClick={() => setActive(t.id)}
+            style={{
+              padding: "8px 12px",
+              borderRadius: 10,
+              border: "1px solid #e5e7eb",
+              background: active === t.id ? "#111827" : "#ffffff",
+              color: active === t.id ? "#ffffff" : "#111827",
+              cursor: "pointer",
+            }}
+          >
+            {t.label}
+          </button>
+        ))}
 
-  {active === "air" && (
-    <button
-      onClick={() => navigate("/reportes/aire")}  // 👈 AHORA FUNCIONA
-      style={{
-        marginLeft: "auto",
-        padding: "8px 12px",
-        borderRadius: 10,
-        border: "1px solid #06b6d4",
-        background: "#ecfeff",
-        color: "#0e7490",
-        cursor: "pointer",
-        fontSize: 13,
-        fontWeight: "500",
-      }}
-    >
-      Ver Reportes de Aire →
-    </button>
-  )}
+        {/* Botón de reportes según pestaña activa */}
+        {active === "air" && (
+          <button
+            onClick={() => navigate("/reportes/aire")}
+            style={{
+              marginLeft: "auto",
+              padding: "8px 12px",
+              borderRadius: 10,
+              border: "1px solid #06b6d4",
+              background: "#ecfeff",
+              color: "#0e7490",
+              cursor: "pointer",
+              fontSize: 13,
+              fontWeight: "500",
+            }}
+          >
+            Ver Reportes de Aire →
+          </button>
+        )}
 
-</nav>
+        {active === "noise" && (
+          <button
+            onClick={() => navigate("/reportes/ruido")}
+            style={{
+              marginLeft: "auto",
+              padding: "8px 12px",
+              borderRadius: 10,
+              border: "1px solid #06b6d4",
+              background: "#fef2f2",
+              color: "#b91c1c",
+              cursor: "pointer",
+              fontSize: 13,
+              fontWeight: "500",
+            }}
+          >
+            Ver Reportes de Ruido →
+          </button>
+        )}
 
+        {active === "underground" && (
+          <button
+            onClick={() => navigate("/reportes/soterrado")}
+            style={{
+              marginLeft: "auto",
+              padding: "8px 12px",
+              borderRadius: 10,
+              border: "1px solid #22c55e",
+              background: "#f0fdf4",
+              color: "#15803d",
+              cursor: "pointer",
+              fontSize: 13,
+              fontWeight: "500",
+            }}
+          >
+            Ver Reportes de Soterrado →
+          </button>
+        )}
+      </nav>
 
-      <section style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 12, padding: 16 }}>
-        <SensorChart data={state[active] || []} series={series} yLabel={yLabel} />
+      <section
+        style={{
+          background: "#fff",
+          border: "1px solid #e5e7eb",
+          borderRadius: 12,
+          padding: 16,
+        }}
+      >
+        <SensorChart
+          data={state[active] || []}
+          series={series}
+          yLabel={yLabel}
+        />
       </section>
     </div>
   );

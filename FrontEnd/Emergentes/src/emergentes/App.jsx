@@ -14,7 +14,9 @@ import { useAuth } from "./context/useAuth.jsx";
 import Login from "./components/Login";
 import Dashboard from "./components/Dashboard";
 import UploadCsv from "./components/UploadCsv";
-import AirReports from "./components/AirReports";  
+import AirReports from "./components/AirReports";
+import NoiseReports from "./components/NoiseReports.jsx";
+import UndergroundReports from "./components/UndergroundReports.jsx";
 import AppShell from "./components/AppShell";
 
 // --- Private wrapper ---
@@ -81,7 +83,20 @@ function AppContent() {
           </Private>
         }
       />
-
+      <Route
+        path="/reportes/ruido"
+        element={
+          <Private>
+            <NoiseReports />
+          </Private>
+        } />
+      <Route
+        path="/reportes/soterrado"
+        element={
+          <Private>
+            <UndergroundReports />
+          </Private>
+        } />
       <Route
         path="/upload"
         element={

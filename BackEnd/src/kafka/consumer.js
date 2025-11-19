@@ -115,7 +115,12 @@ export async function startConsumer() {
           const co2 = validPayload.sum_co2 / validPayload.count;
           const temperature = validPayload.sum_temperature / validPayload.count;
           const humidity = validPayload.sum_humidity / validPayload.count;
-          const voc = validPayload.sum_voc / validPayload.count;
+          // const voc = validPayload.sum_voc / validPayload.count;
+          // FIX: prevenir NaN aunque no exista sum_voc
+const voc = validPayload.sum_voc
+  ? validPayload.sum_voc / validPayload.count
+  : 0;
+
           const ts = new Date();
 
           await pool.query(

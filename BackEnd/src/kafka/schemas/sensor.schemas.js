@@ -180,28 +180,28 @@ export const undergroundCrudeSchema = Joi.object({
 export const airAggregatedSchema = Joi.object({
   sum_temperature: Joi.number()
     .required()
-    .messages({
-      "any.required": "sum_temperature es requerido"
-    }),
-  
+    .messages({ "any.required": "sum_temperature es requerido" }),
+
   sum_humidity: Joi.number()
     .required()
-    .messages({
-      "any.required": "sum_humidity es requerido"
-    }),
-  
+    .messages({ "any.required": "sum_humidity es requerido" }),
+
   sum_co2: Joi.number()
     .required()
-    .messages({
-      "any.required": "sum_co2 es requerido"
-    }),
-  
+    .messages({ "any.required": "sum_co2 es requerido" }),
+
   sum_pressure: Joi.number()
     .required()
+    .messages({ "any.required": "sum_pressure es requerido" }),
+
+  // 👇 AGREGADO — NECESARIO PARA EVITAR NaN
+  sum_voc: Joi.number()
+    .optional()
+    .allow(null)
     .messages({
-      "any.required": "sum_pressure es requerido"
+      "number.base": "sum_voc debe ser un número"
     }),
-  
+
   count: Joi.number()
     .integer()
     .min(1)
@@ -217,6 +217,7 @@ export const airAggregatedSchema = Joi.object({
     .allow(null, "")
 })
   .unknown(true);
+
 
 /**
  * Schema para datos AGREGADOS (avg1m) de ruido
