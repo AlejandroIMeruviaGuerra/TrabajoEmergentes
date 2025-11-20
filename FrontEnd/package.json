@@ -1,7 +1,9 @@
 {
+  
   "dependencies": {
     "kafkajs": "^2.2.4",
     "node-rdkafka": "^3.5.0",
     "react-router-dom": "^7.9.6"
   }
+  
 }

@@ -12,7 +12,7 @@ export function triggerIngestor(sensorType, filePath) {
     // Ruta del JAR (usa ENV si existe, si no, esta por defecto)
     const JAR_PATH =
       process.env.INGEST_JAR_PATH ||
-      "C:/6TO_SEMESTRE/TECNOLOGIASEMERGENTES/PRACTICA3-FINALISIMAA/TrabajoEmergentes/ingestor-java/target/ingestor-1.0.0-jar-with-dependencies.jar";
+      "D:/Emergentes/Tarea3/TrabajoEmergentes/ingestor-java/target/ingestor-1.0.0-jar-with-dependencies.jar";
 
     const JAVA_PATH = process.env.JAVA_PATH || "java";
     const brokers = process.env.KAFKA_BROKERS || "localhost:9092";
