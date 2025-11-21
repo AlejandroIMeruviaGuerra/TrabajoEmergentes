@@ -1,6 +1,10 @@
 // src/emergentes/components/AirReports.jsx
 import { useEffect, useState } from "react";
 import { fetchAirOverview } from "../../emergentes/services/api.js";
+import AirComfortIndex from "./AirComfortIndex";
+import AirSensorRanking from "./AirSensorRanking";
+import AirQualityTriad from "./AirQualityTriad";
+
 import {
   LineChart, Line, XAxis, YAxis, Tooltip, Legend, CartesianGrid,
   BarChart, Bar, ResponsiveContainer,
@@ -234,6 +238,21 @@ export default function AirReports() {
           </ResponsiveContainer>
         </div>
       </section>
+
+      {/* ================= NUEVAS GRÁFICAS AVANZADAS ================= */}
+
+<section style={{ marginTop: 32 }}>
+  <AirComfortIndex evolucion={evoData} />
+</section>
+
+<section style={{ marginTop: 32 }}>
+  <AirSensorRanking porSensor={porSensor} />
+</section>
+
+<section style={{ marginTop: 32 }}>
+  <AirQualityTriad evolucion={evoData} />
+</section>
+
     </div>
   );
 }

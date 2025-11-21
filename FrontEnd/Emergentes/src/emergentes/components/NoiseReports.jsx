@@ -1,5 +1,9 @@
     import { useEffect, useState } from "react";
     import { fetchNoiseOverview } from "../../emergentes/services/api";
+    import NoiseRadar from "./NoiseRadar";
+    import NoisePeakTimeline from "./NoisePeakTimeline";
+    import NoiseDensityGrid from "./NoiseDensityGrid";
+
     import {
     LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, Legend,
     BarChart, Bar, ResponsiveContainer
@@ -111,6 +115,11 @@
             </ResponsiveContainer>
             </div>
         </section>
+
+{/* NUEVAS GRAFICAS PROFESIONALES */}
+      <NoiseRadar porSensor={data.porSensor} />
+      <NoisePeakTimeline evolucion={data.evolucion} threshold={70} />
+      <NoiseDensityGrid evolucion={data.evolucion} />
         </div>
     );
     }
