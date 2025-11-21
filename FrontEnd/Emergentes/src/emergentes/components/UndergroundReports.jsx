@@ -1,6 +1,9 @@
 // src/emergentes/components/UndergroundReports.jsx
 import { useEffect, useState } from "react";
 import { fetchUndergroundOverview } from "../../emergentes/services/api";
+import UndergroundTrendSmooth from "./UndergroundGraphics/UndergroundTrendSmooth";
+import UndergroundStabilityRadar from "./UndergroundGraphics/UndergroundStabilityRadar";
+import UndergroundBubbleTimeline from "./UndergroundGraphics/UndergroundBubbleTimeline";
 import {
   LineChart,
   Line,
@@ -233,6 +236,10 @@ export default function UndergroundReports() {
           </ResponsiveContainer>
         </div>
       </section>
+
+      <UndergroundTrendSmooth evolucion={overview.evolucion} />
+<UndergroundStabilityRadar porSensor={overview.porSensor} />
+<UndergroundBubbleTimeline evolucion={evolucion} />
     </div>
   );
 }
