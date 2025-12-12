@@ -1,9 +1,9 @@
 // src/emergentes/components/AirReports.jsx
 import { useEffect, useState } from "react";
 import { fetchAirOverview } from "../../emergentes/services/api.js";
-import AirComfortIndex from "./AirComfortIndex";
-import AirSensorRanking from "./AirSensorRanking";
-import AirQualityTriad from "./AirQualityTriad";
+import AirComfortIndex from "./AirGraphics/AirComfortIndex";
+import AirSensorRanking from "./AirGraphics/AirSensorRanking";
+import AirQualityTriad from "./AirGraphics/AirQualityTriad";
 
 import {
   LineChart, Line, XAxis, YAxis, Tooltip, Legend, CartesianGrid,

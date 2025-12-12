@@ -8,6 +8,7 @@ import Dashboard from "./emergentes/components/Dashboard";
 import UploadCsv from "./emergentes/components/UploadCsv";
 import Historico from "./emergentes/components/Historico";
 import PrivateRoute from "./emergentes/context/PrivateRoute";
+import MachineLearning from "./emergentes/components/MachineLearning.jsx";
 
 function App() {
   return (
@@ -19,7 +20,7 @@ function App() {
 
           {/* Dashboard tiempo real */}
           <Route
-            path="/"
+            index
             element={
               <PrivateRoute>
                 <AppShell>
@@ -28,6 +29,7 @@ function App() {
               </PrivateRoute>
             }
           />
+
 
           {/* Histórico */}
           <Route
@@ -52,13 +54,27 @@ function App() {
               </PrivateRoute>
             }
           />
+          {/* Machine Learning */}
+          <Route
+            path="/predicciones"
+            element={
+              <PrivateRoute>
+                <AppShell>
+                  <MachineLearning />
+                </AppShell>
+              </PrivateRoute>
+            }
+          />
+
 
           {/* Cualquier otra ruta → Dashboard */}
-          <Route path="*" element={<Navigate to="/" replace />} />
+          {/* <Route path="*" element={<Navigate to="/" replace />} /> */}
         </Routes>
       </BrowserRouter>
     </AuthProvider>
   );
 }
+
+console.log("Renderizando AppShell con children:", children);
 
 export default App;

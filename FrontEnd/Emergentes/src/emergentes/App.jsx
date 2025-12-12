@@ -18,6 +18,7 @@ import AirReports from "./components/AirReports";
 import NoiseReports from "./components/NoiseReports.jsx";
 import UndergroundReports from "./components/UndergroundReports.jsx";
 import AppShell from "./components/AppShell";
+import MachineLearning from "./components/MachineLearning.jsx";
 
 // --- Private wrapper ---
 function Private({ children }) {
@@ -102,6 +103,14 @@ function AppContent() {
         element={
           <Private>
             <UploadCsv />
+          </Private>
+        }
+      />
+      <Route
+        path="/predicciones"
+        element={
+          <Private>
+            <MachineLearning />
           </Private>
         }
       />

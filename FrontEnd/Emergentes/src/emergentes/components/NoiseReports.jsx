@@ -1,8 +1,8 @@
     import { useEffect, useState } from "react";
     import { fetchNoiseOverview } from "../../emergentes/services/api";
-    import NoiseRadar from "./NoiseRadar";
-    import NoisePeakTimeline from "./NoisePeakTimeline";
-    import NoiseDensityGrid from "./NoiseDensityGrid";
+    import NoiseRadar from "./NoiseGraphics/NoiseRadar";
+    import NoisePeakTimeline from "./NoiseGraphics/NoisePeakTimeline";
+    import NoiseDensityGrid from "./NoiseGraphics/NoiseDensityGrid";
 
     import {
     LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, Legend,

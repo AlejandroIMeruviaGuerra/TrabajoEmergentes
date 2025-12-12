@@ -13,6 +13,7 @@ export default function LeftSidebar({ open, setOpen }) {
         { to: "/", label: "Dashboard", icon: "📊", roles: ["Ejecutivo", "Operativo"] },
         { to: "/historico", label: "Histórico", icon: "📈", roles: ["Ejecutivo", "Operativo"] },
         { to: "/upload", label: "Subir CSV", icon: "📤", roles: ["Ejecutivo"] },
+        { to: "/predicciones", label: "Predicciones ML", icon: "🤖", roles: ["Ejecutivo", "Operativo"] },
       ];
       if (!user) return [];
       return allItems.filter((item) => item.roles.includes(user.rol));
@@ -21,6 +22,8 @@ export default function LeftSidebar({ open, setOpen }) {
   );
 
   const width = open ? 220 : 72;
+
+  console.log("ROL DEL USUARIO:", user?.rol);
 
   return (
     <aside

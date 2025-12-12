@@ -18,6 +18,9 @@ import healthRoutes from "./routes/health.routes.js";
 import reportsRoutes from "./routes/reports.routes.js";
 import noiseReports from "./routes/noise.routes.js";
 import undergroundReports from "./routes/underground.routes.js";
+// ML
+import mlRoutes from "./routes/ml.routes.js"
+
 // Kafka
 import { startConsumer, setSocketIO, stopConsumer } from "./kafka/consumer.js";
 // import { sendMockData } from "./kafka/producer.js"; // opcional
@@ -42,6 +45,7 @@ app.use("/api/health", healthRoutes);
 app.use("/api/reports", reportsRoutes);
 app.use("/api/reports/noise", noiseReports);
 app.use("/api/reports/underground", undergroundReports);
+app.use("/api/ml", mlRoutes);
 
 // Healthcheck legacy (mantener por compatibilidad, pero usar /api/health/)
 app.get("/health", (_req, res) => {
